@@ -1,0 +1,33 @@
+<!doctype html>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+        <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+
+        <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+
+        <title>D3 Visualization</title>
+
+        <script src="./assets/d3.v7.min.js"></script>
+        <style>
+            body {
+                margin: 0 !important;
+                overflow: hidden !important;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="my_dataviz"></div>
+        <py-config>
+            {
+                "packages": ["numpy" ]
+            }
+        </py-config>
+        <script type="py" src="./main.py"></script>
+    </body>
+</html>
