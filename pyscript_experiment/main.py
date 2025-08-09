@@ -1,5 +1,4 @@
 import numpy as np
-
 from js import d3, setTimeout, window
 from pyodide.ffi import create_proxy
 
@@ -14,38 +13,35 @@ GRID = {
 }
 NEIGHBORS = np.zeros_like(GRID["n"])
 
-svg = d3.select("#my_dataviz") \
-    .attr("width", WIDTH) \
-    .attr("height", HEIGHT) \
-    .append("svg") \
-    .attr("class", "container-svg") \
-    .attr("width", WIDTH) \
+svg = (
+    d3.select("#my_dataviz")
+    .attr("width", WIDTH)
     .attr("height", HEIGHT)
+    .append("svg")
+    .attr("class", "container-svg")
+    .attr("width", WIDTH)
+    .attr("height", HEIGHT)
+)
 
-svg.append("rect") \
-    .attr("class", "svg-rect") \
-    .attr("x",0).attr("y",0) \
-    .attr("height", HEIGHT).attr("width", WIDTH) \
-    .style("fill", "EBEBEB")
-    
-x = d3.scaleLinear() \
-    .domain([0, GRID_SIZE]) \
-    .range([ 0, WIDTH ])
-          
-y = d3.scaleLinear() \
-    .domain([0, GRID_SIZE]) \
-    .range([ HEIGHT, 0])
-    
-    
+svg.append("rect").attr("class", "svg-rect").attr("x", 0).attr("y", 0).attr("height", HEIGHT).attr(
+    "width",
+    WIDTH,
+).style("fill", "EBEBEB")
+
+x = d3.scaleLinear().domain([0, GRID_SIZE]).range([0, WIDTH])
+
+y = d3.scaleLinear().domain([0, GRID_SIZE]).range([HEIGHT, 0])
+
+
 def init_grid() -> None:
-    """Function from `experimental/conways_gol.py`"""
+    """Taken function from `experimental/conways_gol.py`."""
     for i in range(-10, 10, 1):
         for j in range(-10, 10, 1):
             GRID["n"][GRID_SIZE // 2 + i, GRID_SIZE // 2 + j] = 1
-            
-            
+
+
 def update_grid() -> None:
-    """Function from `experimental/conways_gol.py`"""
+    """Taken function from `experimental/conways_gol.py`."""
     grid_n = GRID["n"]
     grid_nplus1 = GRID["n+1"]
     NEIGHBORS[:-1, :] += grid_n[+1:, :]
@@ -66,31 +62,27 @@ def update_grid() -> None:
     grid_nplus1 *= 1 - (NEIGHBORS < 2) * grid_n
     GRID["n"], GRID["n+1"] = grid_nplus1, grid_n
     GRID["n+1"][:, :] = 0
-    NEIGHBORS[:, :] = 0    
-    
-    
-@create_proxy
-def next_frame() -> None:
-    """Animate to next state"""
-    window.requestAnimationFrame(update)
-    
+    NEIGHBORS[:, :] = 0
+
 
 @create_proxy
-def update(*args) -> None:
-    """Updates the scatterplot at a stable FPS"""
+def next_frame() -> None:
+    """Animate to next state."""
+    window.requestAnimationFrame(update)
+
+
+@create_proxy
+def update(*_: tuple) -> None:
+    """Update the scatterplot at a stable FPS."""
     y_coords, x_coords = GRID["n"].nonzero()
     d3.selectAll(".pixel").remove()
-    for x_coord, y_coord in zip(x_coords, y_coords):
-        svg.append('g') \
-            .attr("class", "pixel") \
-            .append("rect") \
-            .attr("x", x(x_coord)) \
-            .attr("y",  y(y_coord)) \
-            .attr("width", GRID_LINES_DISTANCE) \
-            .attr("height", GRID_LINES_DISTANCE) \
-            .style("fill", "red" )
+    for x_coord, y_coord in zip(x_coords, y_coords, strict=True):
+        svg.append("g").attr("class", "pixel").append("rect").attr("x", x(x_coord)).attr("y", y(y_coord)).attr(
+            "width",
+            GRID_LINES_DISTANCE,
+        ).attr("height", GRID_LINES_DISTANCE).style("fill", "red")
     update_grid()
-    setTimeout(next_frame, 1000 / FPS);
+    setTimeout(next_frame, 1000 / FPS)
 
 
 init_grid()
