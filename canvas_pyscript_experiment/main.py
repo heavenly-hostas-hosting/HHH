@@ -1,4 +1,4 @@
-from js import MouseEvent, document, window
+from js import Math, MouseEvent, document, window
 from pyscript import when
 
 canvas = document.getElementById("image-canvas")
@@ -98,3 +98,17 @@ def leaves_canvas(event: MouseEvent) -> None:
     ctx.lineTo(x, y)
     ctx.stroke()  # Draws the line to the point on the edge where the mouse leaves the canvas
     drawing = False
+
+
+@when("click", "#image-canvas")
+def canvas_click(event: MouseEvent) -> None:
+    """Handle mouse clicking canvas.
+
+    Args:
+        event (MouseEvent): The mouse event
+
+    """
+    x, y = get_canvas_coords(event)
+    ctx.beginPath()
+    ctx.ellipse(x, y, ctx.lineWidth / 6, ctx.lineWidth / 6, 0, 0, 2 * Math.PI)
+    ctx.stroke()
