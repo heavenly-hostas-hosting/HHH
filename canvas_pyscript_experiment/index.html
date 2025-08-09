@@ -1,0 +1,35 @@
+<!doctype html>
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+        <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+
+        <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+
+        <title>Canvas Experiment</title>
+        <style>
+            #canvas-container {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                align-items: center;
+            }
+
+            #image-canvas {
+                border: 1px solid black;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="canvas-container">
+            <canvas id="image-canvas"></canvas>
+        </div>
+        <span id="debug-text"></span>
+        <script type="py" src="./main.py"></script>
+    </body>
+</html>
