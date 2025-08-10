@@ -29,6 +29,7 @@ ctx.drawing = False
 ctx.action = "pen"
 ctx.rect = canvas.getBoundingClientRect()
 
+
 def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
     """Give the canvas coordinates.
 
@@ -158,8 +159,15 @@ def action_change(event: Event) -> None:
     else:
         ctx.globalCompositeOperation = "destination-out"
 
-@when("reset","body")
-def resetBoard(event: Event) -> None:
+
+@when("reset", "body")
+def reset_board(_: Event) -> None:
+    """Reset the canvas.
+
+    Args:
+        _ (Event): Reset event
+
+    """
     ctx.reset()
 
 

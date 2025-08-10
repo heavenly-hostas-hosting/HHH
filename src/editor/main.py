@@ -3,7 +3,6 @@ from nicegui import app, ui
 app.add_static_files("/scripts", "scripts")
 
 
-
 ui.add_head_html("""
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
@@ -23,19 +22,24 @@ ui.add_body_html("""
     </dialog>
 """)
 
-def resetConfirmation():
+
+def reset_confirmation() -> None:
+    """Prompt user to reset canvas."""
     with ui.dialog() as dialog, ui.card():
-        ui.label('Are you sure you want to reset?')
+        ui.label("Are you sure you want to reset?")
         with ui.row():
-            ui.button('Cancel', on_click=lambda:dialog.close())
-            ui.button('Reset', on_click=lambda:(reset(), dialog.close()))
+            ui.button("Cancel", on_click=lambda: dialog.close())
+            ui.button("Reset", on_click=lambda: (reset(), dialog.close()))
     dialog.open()
 
-def reset():
+
+def reset() -> None:
+    """Reset canvas."""
     ui.run_javascript("""
         const event = new Event('reset');
         document.body.dispatchEvent(event);
     """)
+
 
 with ui.row():
     with ui.column():
@@ -52,7 +56,7 @@ with ui.row():
                 actionSelect.dispatchEvent(event);
                 """),
             ).props("id='action-select'")
-            ui.button('Reset', on_click = lambda _: resetConfirmation())
+            ui.button("Reset", on_click=lambda _: reset_confirmation())
 
         ui.color_input(
             label="Color",
@@ -62,7 +66,6 @@ with ui.row():
                 document.querySelector(".colour-picker div div div input").dispatchEvent(event);
                 """),
         ).classes("colour-picker")
-
 
         ui.label("Line width")
         ui.slider(
