@@ -174,11 +174,13 @@ def reset_board(_: Event) -> None:
     """
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
+    global_composite_operation = ctx.globalCompositeOperation
     ctx.reset()
     ctx.lineWidth = line_width
     ctx.strokeStyle = stroke_style
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
+    ctx.globalCompositeOperation = global_composite_operation
 
 
 @create_proxy
@@ -192,7 +194,7 @@ def resize(_: Event) -> None:
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
-
+    global_composite_operation = ctx.globalCompositeOperation
     display_height = window.innerHeight * 0.95
 
     display_width = display_height * (2**0.5)
@@ -211,6 +213,7 @@ def resize(_: Event) -> None:
 
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
+    ctx.globalCompositeOperation = global_composite_operation
 
 
 window.addEventListener("resize", resize)
