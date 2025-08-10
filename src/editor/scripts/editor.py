@@ -53,6 +53,8 @@ def start_path(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
+    if event.button != 0:
+        return
     ctx.drawing = True
     x, y = get_canvas_coords(event)
     ctx.beginPath()
@@ -111,6 +113,8 @@ def canvas_click(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
+    if event.button != 0:
+        return
     x, y = get_canvas_coords(event)
     ctx.beginPath()
     ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
@@ -168,7 +172,13 @@ def reset_board(_: Event) -> None:
         _ (Event): Reset event
 
     """
+    line_width = ctx.lineWidth
+    stroke_style = ctx.strokeStyle
     ctx.reset()
+    ctx.lineWidth = line_width
+    ctx.strokeStyle = stroke_style
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
 
 
 @create_proxy

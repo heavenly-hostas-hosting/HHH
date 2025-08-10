@@ -1,6 +1,8 @@
+import pathlib
+
 from nicegui import app, ui
 
-app.add_static_files("/scripts", "scripts")
+app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
 
 ui.add_head_html("""
