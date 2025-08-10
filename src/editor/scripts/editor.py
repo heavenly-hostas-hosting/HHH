@@ -26,7 +26,7 @@ ctx.lineCap = "round"
 ctx.lineJoin = "round"
 
 ctx.drawing = False
-ctx.action = "draw"
+ctx.action = "pen"
 ctx.rect = canvas.getBoundingClientRect()
 
 
@@ -111,12 +111,13 @@ def canvas_click(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-    if ctx.drawing:
-        return
     x, y = get_canvas_coords(event)
     ctx.beginPath()
     ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
-    ctx.stroke()
+    if ctx.action == "pen":
+        ctx.stroke()
+    elif ctx.action == "eraser":
+        ctx.fill()
 
 
 @when(
@@ -153,6 +154,10 @@ def action_change(event: Event) -> None:
 
     """
     ctx.action = event.target.getAttribute("value")
+    if ctx.action == "pen":
+        ctx.globalCompositeOperation = "source-over"
+    else:
+        ctx.globalCompositeOperation = "destination-out"
 
 
 @create_proxy
