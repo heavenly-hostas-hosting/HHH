@@ -21,6 +21,7 @@ ctx.lineCap = "round"
 ctx.lineJoin = "round"
 
 ctx.drawing = False
+ctx.action = "draw"
 rect = canvas.getBoundingClientRect()
 
 
@@ -34,8 +35,8 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
         tuple[float, float]: The x and y coordinates
 
     """
-    x = (event.clientX - rect.left) * SCALE
-    y = (event.clientY - rect.top) * SCALE
+    x = (event.pageX - rect.left) * SCALE
+    y = (event.pageY - rect.top) * SCALE
     return (x, y)
 
 
@@ -134,3 +135,14 @@ def width_change(event: Event) -> None:
 
     """
     ctx.lineWidth = int(event.target.getAttribute("aria-valuenow"))
+
+
+@when("change", "#action-select")
+def action_change(event: Event) -> None:
+    """Handle action change.
+
+    Args:
+        event (Event): Change event
+
+    """
+    ctx.action = event.target.getAttribute("value")
