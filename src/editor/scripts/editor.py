@@ -1,28 +1,33 @@
-from js import Event, Math, MouseEvent, document, window
+from js import Event, Math, MouseEvent, Object, document, window
+from pyodide.ffi import create_proxy
 from pyscript import when
 
 canvas = document.getElementById("image-canvas")
-ctx = canvas.getContext("2d")
 
-display_height = window.innerHeight * 0.8
-display_width = display_height * (2**0.5)
+settings = Object()
+settings.willReadFrequently = True
 
-SCALE = 2
+ctx = canvas.getContext("2d", settings)
 
-canvas.style.height = f"{display_height}px"  # 80vh
-canvas.style.width = f"{display_width}px"  # Same ratio as an A4 sheet of paper
+display_height = window.innerHeight * 0.95  # 95vh
+display_width = display_height * (2**0.5)  # Same ratio as an A4 sheet of paper
+
+SCALE = 2  # Better resolution
+
+canvas.style.height = f"{display_height}px"
+canvas.style.width = f"{display_width}px"
 
 canvas.height = display_height * SCALE
 canvas.width = display_width * SCALE
 
 ctx.strokeStyle = "black"
-ctx.lineWidth = 10
+ctx.lineWidth = 5
 ctx.lineCap = "round"
 ctx.lineJoin = "round"
 
 ctx.drawing = False
 ctx.action = "pen"
-rect = canvas.getBoundingClientRect()
+ctx.rect = canvas.getBoundingClientRect()
 
 def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
     """Give the canvas coordinates.
@@ -34,8 +39,8 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
         tuple[float, float]: The x and y coordinates
 
     """
-    x = (event.pageX - rect.left) * SCALE
-    y = (event.pageY - rect.top) * SCALE
+    x = (event.pageX - ctx.rect.left) * SCALE
+    y = (event.pageY - ctx.rect.top) * SCALE
     return (x, y)
 
 
@@ -105,14 +110,15 @@ def canvas_click(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-
     x, y = get_canvas_coords(event)
     ctx.beginPath()
-    ctx.ellipse(x, y, ctx.lineWidth / 6, ctx.lineWidth / 6, 0, 0, 2 * Math.PI)  # Put a dot here
-    if ctx.action == 'pen':
+    ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
+    if ctx.action == "pen":
         ctx.stroke()
-    elif ctx.action == 'eraser':
-        ctx.fill() 
+    elif ctx.action == "eraser":
+        ctx.fill()
+
+
 @when(
     "change",
     ".colour-picker div div div input",
@@ -146,8 +152,8 @@ def action_change(event: Event) -> None:
         event (Event): Change event
 
     """
-    ctx.action = event.target.getAttribute("value")      
-    if ctx.action == 'pen':
+    ctx.action = event.target.getAttribute("value")
+    if ctx.action == "pen":
         ctx.globalCompositeOperation = "source-over"
     else:
         ctx.globalCompositeOperation = "destination-out"
@@ -156,3 +162,37 @@ def action_change(event: Event) -> None:
 def resetBoard(event: Event) -> None:
     ctx.reset()
 
+
+@create_proxy
+def resize(_: Event) -> None:
+    """Resize canvas according to window.
+
+    Args:
+        _ (Event): Resize event
+
+    """
+    data = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    line_width = ctx.lineWidth
+    stroke_style = ctx.strokeStyle
+
+    display_height = window.innerHeight * 0.95
+
+    display_width = display_height * (2**0.5)
+
+    canvas.style.height = f"{display_height}px"
+    canvas.style.width = f"{display_width}px"
+
+    canvas.height = display_height * SCALE
+    canvas.width = display_width * SCALE
+
+    ctx.rect = canvas.getBoundingClientRect()
+    ctx.putImageData(data, 0, 0)
+
+    ctx.lineWidth = line_width
+    ctx.strokeStyle = stroke_style
+
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+
+
+window.addEventListener("resize", resize)
