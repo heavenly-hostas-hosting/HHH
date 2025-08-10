@@ -1,5 +1,14 @@
 **Warning: incomplete. TODOS in the Issues section, comment 'dibs' if you want to solve it yourself.**
 
+## Dev guide
+
+The easiest way to test the website locally is just to run a basic HTTP server. You can do that in Python by running the following in the directory that contains this file:
+
+```
+python3 -m http.server
+```
+
+
 ## Concept
 
 This is the section of the project that manages the Image Gallery. It's a 3D place that has on display every picture that every user has ever posted on the app.
