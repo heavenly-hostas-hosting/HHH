@@ -6,6 +6,20 @@ app.add_static_files("/scripts", "scripts")
 ui.add_head_html("""
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <style>
+        #loading { outline: none; border: none; background: transparent }
+    </style>
+    <script type="module">
+        const loading = document.getElementById('loading');
+        addEventListener('py:ready', () => loading.close());
+        loading.showModal();
+    </script>
+""")
+
+ui.add_body_html("""
+    <dialog id="loading">
+            <h1>Loading...</h1>
+    </dialog>
 """)
 
 with ui.row():
