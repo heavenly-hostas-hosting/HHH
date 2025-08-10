@@ -1,4 +1,4 @@
-from js import Math, MouseEvent, document, window
+from js import Event, Math, MouseEvent, document, window
 from pyscript import when
 
 canvas = document.getElementById("image-canvas")
@@ -112,3 +112,17 @@ def canvas_click(event: MouseEvent) -> None:
     ctx.beginPath()
     ctx.ellipse(x, y, ctx.lineWidth / 6, ctx.lineWidth / 6, 0, 0, 2 * Math.PI)
     ctx.stroke()
+
+
+@when(
+    "change",
+    ".colour-picker div div div input",
+)
+def colour_change(event: Event) -> None:
+    """Handle colour change.
+
+    Args:
+        event (Event): Change event
+
+    """
+    ctx.strokeStyle = event.target.value
