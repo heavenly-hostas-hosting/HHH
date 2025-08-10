@@ -20,7 +20,7 @@ ctx.lineWidth = 10
 ctx.lineCap = "round"
 ctx.lineJoin = "round"
 
-drawing = False
+ctx.drawing = False
 rect = canvas.getBoundingClientRect()
 
 
@@ -47,8 +47,7 @@ def start_path(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-    global drawing
-    drawing = True
+    ctx.drawing = True
     x, y = get_canvas_coords(event)
     ctx.beginPath()
     ctx.moveTo(x, y)
@@ -62,7 +61,7 @@ def mouse_tracker(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-    if not drawing:
+    if not ctx.drawing:
         return
     x, y = get_canvas_coords(event)
     ctx.lineTo(x, y)
@@ -77,10 +76,9 @@ def stop_path(_: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-    global drawing
-    if not drawing:
+    if not ctx.drawing:
         return
-    drawing = False
+    ctx.drawing = False
 
 
 @when("mouseout", "#image-canvas")
@@ -91,13 +89,12 @@ def leaves_canvas(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-    global drawing
-    if not drawing:
+    if not ctx.drawing:
         return
     x, y = get_canvas_coords(event)
     ctx.lineTo(x, y)
     ctx.stroke()  # Draws the line to the point on the edge where the mouse leaves the canvas
-    drawing = False
+    ctx.drawing = False
 
 
 @when("click", "#image-canvas")
@@ -110,7 +107,7 @@ def canvas_click(event: MouseEvent) -> None:
     """
     x, y = get_canvas_coords(event)
     ctx.beginPath()
-    ctx.ellipse(x, y, ctx.lineWidth / 6, ctx.lineWidth / 6, 0, 0, 2 * Math.PI)
+    ctx.ellipse(x, y, ctx.lineWidth / 6, ctx.lineWidth / 6, 0, 0, 2 * Math.PI)  # Put a dot here
     ctx.stroke()
 
 
@@ -126,3 +123,14 @@ def colour_change(event: Event) -> None:
 
     """
     ctx.strokeStyle = event.target.value
+
+
+@when("change", ".width-input")
+def width_change(event: Event) -> None:
+    """Handle colour change.
+
+    Args:
+        event (Event): Change event
+
+    """
+    ctx.lineWidth = int(event.target.getAttribute("aria-valuenow"))

@@ -1,20 +1,6 @@
 from nicegui import app, ui
-from nicegui.events import ValueChangeEventArguments
 
 app.add_static_files("/scripts", "scripts")
-
-
-def handle_colour_change(_: ValueChangeEventArguments) -> None:
-    """Handle colour change.
-
-    Args:
-        _ (ValueChangeEventArguments): Change event
-
-    """
-    ui.run_javascript("""
-        var event = new Event('change');
-        document.querySelector(".colour-picker div div div input").dispatchEvent(event);
-        """)
 
 
 ui.add_head_html("""
@@ -22,11 +8,25 @@ ui.add_head_html("""
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
 """)
 
-picker = ui.color_input(
+ui.color_input(
     label="Color",
     value="#000000",
-    on_change=handle_colour_change,
+    on_change=lambda _: ui.run_javascript("""
+        var event = new Event('change');
+        document.querySelector(".colour-picker div div div input").dispatchEvent(event);
+        """),
 ).classes("colour-picker")
+
+ui.label("Line width")
+ui.slider(
+    min=1,
+    max=20,
+    value=5,
+    on_change=lambda _: ui.run_javascript("""
+        var event = new Event('change');
+        document.querySelector(".width-input").dispatchEvent(event);
+        """),
+).classes("width-input")
 
 
 ui.add_body_html("""
