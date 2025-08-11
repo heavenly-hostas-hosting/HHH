@@ -31,9 +31,9 @@ def reset_confirmation() -> None:
     """Prompt user to reset canvas."""
     with ui.dialog() as dialog, ui.card():
         ui.label("Are you sure you want to reset?")
-        with ui.row():
+        with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
             ui.button("Cancel", on_click=lambda: dialog.close())
-            ui.button("Reset", on_click=lambda: (reset(), dialog.close()))
+            ui.button("Reset", on_click=lambda: (reset(), dialog.close())).props("color='red'")
     dialog.open()
 
 
@@ -66,23 +66,27 @@ async def spin() -> None:
     """)
 
 
-with ui.row():
-    with ui.column():
+with ui.row().style("display: flex; width: 100%; justify-content: space-between;"):
+    # Left side contains page controls
+    with ui.column().style("flex-grow: 1; flex-basis: 0;"):
         dark = ui.dark_mode()
         ui.switch("Dark mode").bind_value(dark)
-        with ui.row():
-            ui.toggle(
-                {"pen": "🖊️", "eraser": "🧽"},
-                value="pen",
-                on_change=lambda e: ui.run_javascript(f"""
+        ui.button("Reset", on_click=lambda _: reset_confirmation()).props("color='red'")
+
+    ui.element("canvas").props("id='image-canvas'").style("border: 1px solid black; background-color: white;")
+
+    # Right side contains canvas controls
+    with ui.column().style("flex-grow: 1; flex-basis: 0;"):
+        ui.toggle(
+            {"pen": "🖊️", "eraser": "🧽"},
+            value="pen",
+            on_change=lambda e: ui.run_javascript(f"""
                 const event = new Event('change');
                 const actionSelect = document.querySelector("#action-select");
                 actionSelect.setAttribute("value", "{e.value}");
                 actionSelect.dispatchEvent(event);
                 """),
-            ).props("id='action-select'")
-            ui.button("Reset", on_click=lambda _: reset_confirmation())
-
+        ).props("id='action-select'")
         with ui.row():
             colour_values = []
             for colour in ["R", "G", "B"]:
@@ -91,7 +95,6 @@ with ui.row():
                     colour_label = ui.label("00")
                     colour_values.append(colour_label)
         ui.button("Spin", on_click=spin)
-
         ui.label("Line width")
         ui.slider(
             min=1,
@@ -103,7 +106,6 @@ with ui.row():
                 """),
         ).classes("width-input")
 
-    ui.element("canvas").props("id='image-canvas'").style("border: 1px solid black; background-color: white;")
 
 ui.add_body_html("""
     <script type="py" src="/scripts/editor.py" defer></script>
