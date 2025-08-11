@@ -1,6 +1,6 @@
+import asyncio
 import pathlib
 import random
-import asyncio
 
 from nicegui import app, ui
 
@@ -26,6 +26,7 @@ ui.add_body_html("""
     </dialog>
 """)
 
+
 def reset_confirmation() -> None:
     """Prompt user to reset canvas."""
     with ui.dialog() as dialog, ui.card():
@@ -43,16 +44,18 @@ def reset() -> None:
         document.body.dispatchEvent(event);
     """)
 
-Hex = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
+
+Hex = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"]
+
 
 async def spin() -> None:
-    """Change RGB values"""
-    hex_value = ''
+    """Change RGB values."""
+    hex_value = ""
     for x in range(10):
         for y in range(3):
-            text = random.choice(Hex) + random.choice(Hex)
-            colourValues[y].text = text
-            if x == 9:
+            text = random.choice(Hex) + random.choice(Hex)  # noqa: S311
+            colour_values[y].text = text
+            if x == 9:  # noqa: PLR2004
                 hex_value += text
         await asyncio.sleep(0.1)
     ui.run_javascript(f"""
@@ -61,6 +64,7 @@ async def spin() -> None:
         const event = new Event('colourChange');
         document.body.dispatchEvent(event);
     """)
+
 
 with ui.row():
     with ui.column():
@@ -79,15 +83,14 @@ with ui.row():
             ).props("id='action-select'")
             ui.button("Reset", on_click=lambda _: reset_confirmation())
 
-
         with ui.row():
-            colourValues = []
-            for colour in ['R','G','B']:
-                with ui.column().style('align-items: center;'):
+            colour_values = []
+            for colour in ["R", "G", "B"]:
+                with ui.column().style("align-items: center;"):
                     ui.label(colour)
-                    colour_label = ui.label('00')
-                    colourValues.append(colour_label)
-        ui.button('Spin',on_click = spin)
+                    colour_label = ui.label("00")
+                    colour_values.append(colour_label)
+        ui.button("Spin", on_click=spin)
 
         ui.label("Line width")
         ui.slider(
