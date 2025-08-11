@@ -4,11 +4,10 @@
 ## DOCS
 ## https://threejs.org/docs/
 
-from pyodide.ffi import to_js
+from pyodide.ffi import create_proxy, to_js
 from pyscript import when, window, document
-from js import Math, THREE, performance, Object
+from js import Math, THREE, performance, Object, GLTFLoader
 import asyncio
-
 
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
 document.body.appendChild(RENDERER.domElement)
@@ -41,6 +40,7 @@ SCENE.add(MODULAR_GROUP)
 
 MOUSE = THREE.Vector2.new()
 
+
 @when("mousemove", "body")
 def onMouseMove(event):
     event.preventDefault()
@@ -52,7 +52,8 @@ def mathRandom(num=1):
     setNumber = -Math.random() * num + Math.random() * num
     return setNumber
 
-def generate_lights()->None:
+
+def generate_lights() -> None:
     ambientLight = THREE.AmbientLight.new(0xFFFFFF, 0.1)
     SCENE.add(ambientLight)
 
@@ -68,13 +69,13 @@ def generate_lights()->None:
     lightBack.position.set(0, -3, -1)
     SCENE.add(lightBack)
 
-
     rectSize = 2
     intensity = 14
     rectLight = THREE.RectAreaLight.new(0x0FFFFF, intensity, rectSize, rectSize)
     rectLight.position.set(0, 0, 1)
     rectLight.lookAt(0, 0, 0)
     SCENE.add(rectLight)
+
 
 def create_cubes(mathRandom, modularGroup):
     i = 0
@@ -108,6 +109,36 @@ def create_cubes(mathRandom, modularGroup):
         cube.position.set(cube.positionX, cube.positionY, cube.positionZ)
         modularGroup.add(cube)
         i += 1
+
+
+def tree_print(x, indent=0):
+    qu = '"'
+    output = " " * 4 * indent + f"{x.name or qu * 2} ({x.type})"
+    for i in x.children:
+        output += "\n" + tree_print(i, indent=indent + 1)
+    return output
+
+
+def load_gallery():
+    def inner_loader(gltf):
+        obj = gltf.scene
+        SCENE.add(obj)
+        print(f"Loading done! Here's its component structure:")
+        print(tree_print(obj))
+
+    def inner_progress(xhr):
+        print(str(xhr.loaded) + " loaded")
+
+    def inner_error(error):
+        print(f"error: {error}")
+
+    loader = GLTFLoader.new()
+    loader.load(
+        "assets/CesiumMan.glb",
+        create_proxy(inner_loader),
+        create_proxy(inner_progress),
+        create_proxy(inner_error),
+    )
 
 
 def generateParticle(mathRandom, particularGroup, num, amp=2):
@@ -146,15 +177,9 @@ async def main():
             newCubes.rotation.y += 0.005
             newCubes.rotation.z += 0.003
 
-            newCubes.position.x = (
-                Math.sin(time * newCubes.positionZ) * newCubes.positionY
-            )
-            newCubes.position.y = (
-                Math.cos(time * newCubes.positionX) * newCubes.positionZ
-            )
-            newCubes.position.z = (
-                Math.sin(time * newCubes.positionY) * newCubes.positionX
-            )
+            newCubes.position.x = Math.sin(time * newCubes.positionZ) * newCubes.positionY
+            newCubes.position.y = Math.cos(time * newCubes.positionX) * newCubes.positionZ
+            newCubes.position.z = Math.sin(time * newCubes.positionY) * newCubes.positionX
             i += 1
 
         PARTICULAR_GROUP.rotation.y += 0.005
@@ -170,5 +195,6 @@ async def main():
 if __name__ == "__main__":
     generate_lights()
     create_cubes(mathRandom, MODULAR_GROUP)
+    load_gallery()
     generateParticle(mathRandom, PARTICULAR_GROUP, 200, 2)
     asyncio.ensure_future(main())

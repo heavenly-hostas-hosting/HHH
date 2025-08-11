@@ -11,9 +11,24 @@
         <!-- CSS for examples -->
         <link rel="stylesheet" href="./assets/css/examples.css" />
 
+        <!-- Script for Three js -->
+        <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/"
+          }
+        }
+        </script>
         <!-- This script tag bootstraps PyScript -->
         <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+        <script type="module">
+            import * as THREE from 'three';
+            import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+            window.THREE = THREE;
+            window.GLTFLoader = GLTFLoader;
+        </script>
         <!-- for splashscreen -->
         <style>
             #loading { outline: none; border: none; background: transparent }
@@ -30,8 +45,6 @@
         <!-- Icosahedron Example Specific CSS -->
         <link rel="stylesheet" href="./assets/css/icosahedron.css" />
 
-        <!-- Script for Three js -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.147.0/three.min.js"></script>
     </head>
 
     <body>
