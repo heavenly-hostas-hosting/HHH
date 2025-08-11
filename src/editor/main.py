@@ -98,7 +98,7 @@ with ui.row().style("display: flex; width: 100%;"):
         ui.button("Spin", on_click=spin)
 
         ui.label("Line width")
-        ui.slider(
+        slider = ui.slider(
             min=1,
             max=50,
             value=5,
@@ -107,6 +107,7 @@ with ui.row().style("display: flex; width: 100%;"):
                 document.querySelector(".width-input").dispatchEvent(event);
                 """),
         ).classes("width-input")
+        ui.label().bind_text_from(slider, "value")
 
 
 ui.add_body_html("""
