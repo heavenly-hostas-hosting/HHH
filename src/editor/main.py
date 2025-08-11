@@ -6,7 +6,6 @@ from nicegui import app, ui
 
 app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
-
 ui.add_head_html("""
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
@@ -26,14 +25,23 @@ ui.add_body_html("""
     </dialog>
 """)
 
+def do_reset(mode_value):
+    if mode_value:
+        ui.run_javascript(f"""
+            const event = new Event('change');
+            const typeSelect = document.querySelector("#type-select");
+            typeSelect.setAttribute("value", "{mode_value}");
+            typeSelect.dispatchEvent(event);
+            """)
+    reset()
 
-def reset_confirmation() -> None:
+def reset_confirmation(mode_value = False) -> None:
     """Prompt user to reset canvas."""
     with ui.dialog() as dialog, ui.card():
         ui.label("Are you sure you want to reset?")
         with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
             ui.button("Cancel", on_click=lambda: dialog.close())
-            ui.button("Reset", on_click=lambda: (reset(), dialog.close())).props("color='red'")
+            ui.button("Reset", on_click=lambda: (do_reset(mode_value), dialog.close())).props("color='red'")
     dialog.open()
 
 
@@ -72,7 +80,11 @@ with ui.row().style("display: flex; width: 100%;"):
         dark = ui.dark_mode()
         ui.switch("Dark mode").bind_value(dark)
         ui.button("Reset", on_click=lambda _: reset_confirmation()).props("color='red'")
-
+        ui.toggle(
+            {"smooth": "✍️", "pixel": "👾"},
+            value="smooth",
+            on_change=lambda e: reset_confirmation(mode_value = e.value),
+        ).props("id='type-select'")
     ui.element("canvas").props("id='image-canvas'").style("border: 1px solid black; background-color: white;")
 
     # Canvas controls
@@ -80,12 +92,7 @@ with ui.row().style("display: flex; width: 100%;"):
         ui.toggle(
             {"pen": "🖊️", "eraser": "🧽"},
             value="pen",
-            on_change=lambda e: ui.run_javascript(f"""
-            const event = new Event('change');
-            const actionSelect = document.querySelector("#action-select");
-            actionSelect.setAttribute("value", "{e.value}");
-            actionSelect.dispatchEvent(event);
-            """),
+            on_change=lambda e: reset_confirmation()
         ).props("id='action-select'")
 
         with ui.row():
