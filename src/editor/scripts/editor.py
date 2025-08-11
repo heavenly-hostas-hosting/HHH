@@ -1,9 +1,6 @@
-import base64
-
 # Following imports have the ignore flag as they are not pip installed
 from js import (  # pyright: ignore[reportMissingImports]
     Event,
-    FileReader,
     Image,
     Math,
     MouseEvent,
@@ -16,21 +13,25 @@ from pyscript import when  # pyright: ignore[reportMissingImports]
 
 canvas = document.getElementById("image-canvas")
 
+canvas.style.imageRendering = "pixelated"
+canvas.style.imageRendering = "crisp-edges"
+
 settings = Object()
 settings.willReadFrequently = True
 
 ctx = canvas.getContext("2d", settings)
+ctx.imageSmoothingEnabled = False
 
 display_height = window.innerHeight * 0.95  # 95vh
 display_width = display_height * (2**0.5)  # Same ratio as an A4 sheet of paper
 
-SCALE = 2  # Better resolution
+ctx.scale = 2  # Better resolution
 
 canvas.style.height = f"{display_height}px"
 canvas.style.width = f"{display_width}px"
 
-canvas.height = display_height * SCALE
-canvas.width = display_width * SCALE
+canvas.height = display_height * ctx.scale
+canvas.width = display_width * ctx.scale
 
 ctx.strokeStyle = "black"
 ctx.lineWidth = 5
@@ -39,7 +40,22 @@ ctx.lineJoin = "round"
 
 ctx.drawing = False
 ctx.action = "pen"
+ctx.type = "smooth"
 ctx.rect = canvas.getBoundingClientRect()
+
+PIXEL_SIZE = 8
+
+
+def draw_pixel(x: float, y: float) -> None:
+    """Draws the pixel on the canvas.
+
+    Args:
+        x (float): X coordinate
+        y (float): Y coordinate
+
+    """
+    ctx.fillStyle = ctx.strokeStyle
+    ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
 def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
@@ -52,8 +68,11 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
         tuple[float, float]: The x and y coordinates
 
     """
-    x = (event.pageX - ctx.rect.left) * SCALE
-    y = (event.pageY - ctx.rect.top) * SCALE
+    x = (event.pageX - ctx.rect.left) * ctx.scale
+    y = (event.pageY - ctx.rect.top) * ctx.scale
+    if ctx.type == "pixel":
+        x = (int(x) + 5) // 10 * 10
+        y = (int(y) + 5) // 10 * 10
     return (x, y)
 
 
@@ -68,9 +87,10 @@ def start_path(event: MouseEvent) -> None:
     if event.button != 0:
         return
     ctx.drawing = True
-    x, y = get_canvas_coords(event)
-    ctx.beginPath()
-    ctx.moveTo(x, y)
+    if ctx.type == "smooth":
+        x, y = get_canvas_coords(event)
+        ctx.beginPath()
+        ctx.moveTo(x, y)
 
 
 @when("mousemove", "#image-canvas")
@@ -84,8 +104,14 @@ def mouse_tracker(event: MouseEvent) -> None:
     if not ctx.drawing:
         return
     x, y = get_canvas_coords(event)
-    ctx.lineTo(x, y)
-    ctx.stroke()
+    if ctx.type == "smooth":
+        ctx.lineTo(x, y)
+        ctx.stroke()
+    elif ctx.type == "pixel":
+        if ctx.action == "pen":
+            draw_pixel(x, y)
+        elif ctx.action == "eraser":
+            ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
 @when("mouseup", "#image-canvas")
@@ -111,13 +137,15 @@ def leaves_canvas(event: MouseEvent) -> None:
     """
     if not ctx.drawing:
         return
-    x, y = get_canvas_coords(event)
-    ctx.lineTo(x, y)
-    ctx.stroke()  # Draws the line to the point on the edge where the mouse leaves the canvas
+    if ctx.type == "smooth":
+        x, y = get_canvas_coords(event)
+        ctx.lineTo(x, y)
+        ctx.stroke()
+
     ctx.drawing = False
 
 
-@when("click", "#image-canvas")
+@when("mousedown", "#image-canvas")
 def canvas_click(event: MouseEvent) -> None:
     """Handle mouse clicking canvas.
 
@@ -128,12 +156,18 @@ def canvas_click(event: MouseEvent) -> None:
     if event.button != 0:
         return
     x, y = get_canvas_coords(event)
-    ctx.beginPath()
-    ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
-    if ctx.action == "pen":
-        ctx.stroke()
-    elif ctx.action == "eraser":
-        ctx.fill()
+    if ctx.type == "smooth":
+        ctx.beginPath()
+        ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
+        if ctx.action == "pen":
+            ctx.stroke()
+        elif ctx.action == "eraser":
+            ctx.fill()
+    elif ctx.type == "pixel":
+        if ctx.action == "pen":
+            draw_pixel(x, y)
+        elif ctx.action == "eraser":
+            ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
 @when("colourChange", "body")
@@ -171,6 +205,24 @@ def action_change(event: Event) -> None:
         ctx.globalCompositeOperation = "source-over"
     else:
         ctx.globalCompositeOperation = "destination-out"
+
+
+@when("change", "#type-select")
+def type_change(event: Event) -> None:
+    """Handle type change.
+
+    Args:
+        event (Event): Change event
+
+    """
+    ctx.type = event.target.getAttribute("value")
+    if ctx.type == "smooth":
+        ctx.imageSmoothingEnabled = True
+        ctx.scale = 2
+    elif ctx.type == "pixel":
+        ctx.imageSmoothingEnabled = False
+        ctx.scale = 0.5
+    resize(event)
 
 
 @when("reset", "body")
@@ -228,6 +280,7 @@ def resize(_: Event) -> None:
         _ (Event): Resize event
 
     """
+    window.console.log(ctx.scale)
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
@@ -239,8 +292,8 @@ def resize(_: Event) -> None:
     canvas.style.height = f"{display_height}px"
     canvas.style.width = f"{display_width}px"
 
-    canvas.height = display_height * SCALE
-    canvas.width = display_width * SCALE
+    canvas.height = display_height * ctx.scale
+    canvas.width = display_width * ctx.scale
 
     ctx.rect = canvas.getBoundingClientRect()
     ctx.putImageData(data, 0, 0)
