@@ -29,3 +29,6 @@ build/
 .vscode/
 # MacOS
 .DS_Store
+
+# For now we're keeping .blend files out of the repo
+*.blend
