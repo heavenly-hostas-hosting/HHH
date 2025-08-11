@@ -1,5 +1,16 @@
+import base64
+
 # Following imports have the ignore flag as they are not pip installed
-from js import Event, Math, MouseEvent, Object, document, window  # pyright: ignore[reportMissingImports]
+from js import (  # pyright: ignore[reportMissingImports]
+    Event,
+    FileReader,
+    Image,
+    Math,
+    MouseEvent,
+    Object,
+    document,
+    window,
+)
 from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
 
@@ -179,6 +190,34 @@ def reset_board(_: Event) -> None:
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
     ctx.globalCompositeOperation = global_composite_operation
+
+
+@when("click", "#download-button")
+def download_image(_: Event) -> None:
+    """Download the canvas content as an image.
+
+    Args:
+        _ (Event): Click event
+
+    """
+    link = document.createElement("a")
+    link.download = "download.avif"
+    link.href = canvas.toDataURL()
+    link.click()
+    link.remove()
+
+
+@when("change", "#file-upload")
+def upload_image(e: Event) -> None:
+    """Handle image upload.
+
+    Args:
+        e (Event): Upload event
+
+    """
+    img = Image.new()
+    img.onload = lambda _: ctx.drawImage(img, 0, 0)
+    img.src = e.target.src
 
 
 @create_proxy

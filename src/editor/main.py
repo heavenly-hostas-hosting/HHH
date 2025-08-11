@@ -1,8 +1,10 @@
 import asyncio
+import base64
 import pathlib
 import random
 
 from nicegui import app, ui
+from nicegui.events import UploadEventArguments
 
 app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
@@ -30,10 +32,10 @@ ui.add_body_html("""
 def reset_confirmation() -> None:
     """Prompt user to reset canvas."""
     with ui.dialog() as dialog, ui.card():
-        ui.label("Are you sure you want to reset?")
+        ui.label("Are you sure you want to clear the canvas?")
         with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
             ui.button("Cancel", on_click=lambda: dialog.close())
-            ui.button("Reset", on_click=lambda: (reset(), dialog.close())).props("color='red'")
+            ui.button("Clear", on_click=lambda: (reset(), dialog.close())).props("color='red'")
     dialog.open()
 
 
@@ -66,14 +68,38 @@ async def spin() -> None:
     """)
 
 
+def upload_image(e: UploadEventArguments) -> None:
+    """Fire upload event."""
+    ui.notify(f"Uploaded {e.name}")
+    content = base64.b64encode(e.content.read()).decode("utf-8")
+    ui.run_javascript(f"""
+        const event = new Event("change");
+        const fileUpload = document.querySelector("#file-upload");
+        fileUpload.src = "data:{e.type};base64,{content}"
+        fileUpload.dispatchEvent(event);
+    """)
+
+
+ui.element("img").props("id='file-upload'").style("display: none;")
+
 with ui.row().style("display: flex; width: 100%;"):
     # Page controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
         dark = ui.dark_mode()
         ui.switch("Dark mode").bind_value(dark)
-        ui.button("Reset", on_click=lambda _: reset_confirmation()).props("color='red'")
+        ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
+        ui.button("Download").props("id='download-button'")
+        ui.upload(
+            label="Upload file",
+            on_upload=upload_image,
+            on_rejected=lambda _: ui.notify("There was an issue with the upload."),
+        ).classes(
+            "max-w-full",
+        ).props("accept='image/*' id='file-input'")
 
-    ui.element("canvas").props("id='image-canvas'").style("border: 1px solid black; background-color: white;")
+    ui.element("canvas").props("id='image-canvas'").style(
+        "border: 1px solid black; background-color: white;",
+    )
 
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
@@ -87,7 +113,7 @@ with ui.row().style("display: flex; width: 100%;"):
             actionSelect.dispatchEvent(event);
             """),
         ).props("id='action-select'")
-
+        ui.separator().classes("w-full")
         with ui.row():
             colour_values = []
             for colour in ["R", "G", "B"]:
@@ -96,9 +122,9 @@ with ui.row().style("display: flex; width: 100%;"):
                     colour_label = ui.label("00")
                     colour_values.append(colour_label)
         ui.button("Spin", on_click=spin)
-
-        ui.label("Line width")
-        ui.slider(
+        ui.separator().classes("w-full")
+        width_input = ui.number(label="Line Width", min=1, max=50, step=1)
+        width_slider = ui.slider(
             min=1,
             max=50,
             value=5,
@@ -107,7 +133,7 @@ with ui.row().style("display: flex; width: 100%;"):
                 document.querySelector(".width-input").dispatchEvent(event);
                 """),
         ).classes("width-input")
-
+        width_input.bind_value(width_slider)
 
 ui.add_body_html("""
     <script type="py" src="/scripts/editor.py" defer></script>
