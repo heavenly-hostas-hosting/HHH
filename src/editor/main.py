@@ -91,7 +91,8 @@ def upload_image(e: UploadEventArguments) -> None:
     """)
 
 
-def switch_action(e: ValueChangeEventArguments):
+def switch_action(e: ValueChangeEventArguments) -> None:
+    """Fire switch action event."""
     ui.run_javascript(f"""
     const event = new Event('change');
     const actionSelect = document.querySelector("#action-select");
