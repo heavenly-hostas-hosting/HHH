@@ -145,7 +145,12 @@ with ui.row().style("display: flex; width: 100%;"):
         width_input.bind_value(width_slider)
 
 ui.add_body_html("""
-    <script type="py" src="/scripts/editor.py" defer></script>
+    <py-config>
+        [[fetch]]
+        from = "/scripts/"
+        files = ["canvas_ctx.py", "editor.py"]
+    </py-config>
+    <script type="py" src="/scripts/editor.py"></script>
 """)
 
 ui.run()
