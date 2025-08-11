@@ -1,4 +1,5 @@
 from typing import Any, Literal
+
 from js import MouseEvent, document  # pyright: ignore[reportMissingImports]
 
 
@@ -16,7 +17,6 @@ class CanvasContext:
     SCALE: int = 2  # Better resolution
     drawing: bool = False
     action: Literal["pen", "eraser"] = "pen"
-    rect: 
 
     # Builtin attributes
     canvas: Any
@@ -107,11 +107,10 @@ class CanvasContext:
         """The bottom side of the bounding rect."""
         return self.getBoundingClientRect().left
 
-
     ###########################################################################
     # Cutstom Methods
     ###########################################################################
-    def getBoundingClientRect(self) -> Any:  # noqa: N802
+    def getBoundingClientRect(self) -> Any:  # noqa: ANN401, N802
         """Get the canvas getBoundingClientRect."""
         return self.canvas.getBoundingClientRect()
 
@@ -135,19 +134,19 @@ class CanvasContext:
         """Add arc."""
         self.ctx.arc()
 
-    def arcTo(self) -> None:
+    def arcTo(self) -> None:  # noqa: N802
         """Add arcTo."""
         self.ctx.arcTo()
 
-    def beginPath(self) -> None:
+    def beginPath(self) -> None:  # noqa: N802
         """Add beginPath."""
         self.ctx.beginPath()
 
-    def bezierCurveTo(self) -> None:
+    def bezierCurveTo(self) -> None:  # noqa: N802
         """Add bezierCurveTo."""
         self.ctx.bezierCurveTo()
 
-    def clearRect(self) -> None:
+    def clearRect(self) -> None:  # noqa: N802
         """Add clearRect."""
         self.ctx.clearRect()
 
@@ -155,35 +154,35 @@ class CanvasContext:
         """Add clip."""
         self.ctx.clip()
 
-    def closePath(self) -> None:
+    def closePath(self) -> None:  # noqa: N802
         """Add closePath."""
         self.ctx.closePath()
 
-    def createConicGradient(self) -> None:
+    def createConicGradient(self) -> None:  # noqa: N802
         """Add createConicGradient."""
         self.ctx.createConicGradient()
 
-    def createImageData(self) -> None:
+    def createImageData(self) -> None:  # noqa: N802
         """Add createImageData."""
         self.ctx.createImageData()
 
-    def createLinearGradient(self) -> None:
+    def createLinearGradient(self) -> None:  # noqa: N802
         """Add createLinearGradient."""
         self.ctx.createLinearGradient()
 
-    def createPattern(self) -> None:
+    def createPattern(self) -> None:  # noqa: N802
         """Add createPattern."""
         self.ctx.createPattern()
 
-    def createRadialGradient(self) -> None:
+    def createRadialGradient(self) -> None:  # noqa: N802
         """Add createRadialGradient."""
         self.ctx.createRadialGradient()
 
-    def drawFocusIfNeeded(self) -> None:
+    def drawFocusIfNeeded(self) -> None:  # noqa: N802
         """Add drawFocusIfNeeded."""
         self.ctx.drawFocusIfNeeded()
 
-    def drawImage(self) -> None:
+    def drawImage(self) -> None:  # noqa: N802
         """Add drawImage."""
         self.ctx.drawImage()
 
@@ -195,63 +194,63 @@ class CanvasContext:
         """Add fill."""
         self.ctx.fill()
 
-    def fillRect(self) -> None:
+    def fillRect(self) -> None:  # noqa: N802
         """Add fillRect."""
         self.ctx.fillRect()
 
-    def fillText(self) -> None:
+    def fillText(self) -> None:  # noqa: N802
         """Add fillText."""
         self.ctx.fillText()
 
-    def getContextAttributes(self) -> None:
+    def getContextAttributes(self) -> None:  # noqa: N802
         """Add getContextAttributes."""
         self.ctx.getContextAttributes()
 
-    def getImageData(self, *args, **kwargs) -> Any:
+    def getImageData(self, *args: list, **kwargs: dict) -> Any:  # noqa: ANN401, N802
         """Get the image data from the canvas."""
         self.ctx.getImageData(*args, **kwargs)
 
-    def getLineDash(self) -> None:
+    def getLineDash(self) -> None:  # noqa: N802
         """Add getLineDash."""
         self.ctx.getLineDash()
 
-    def getTransform(self) -> None:
+    def getTransform(self) -> None:  # noqa: N802
         """Add getTransform."""
         self.ctx.getTransform()
 
-    def isContextLost(self) -> None:
+    def isContextLost(self) -> None:  # noqa: N802
         """Add isContextLost."""
         self.ctx.isContextLost()
 
-    def isPointInPath(self) -> None:
+    def isPointInPath(self) -> None:  # noqa: N802
         """Add isPointInPath."""
         self.ctx.isPointInPath()
 
-    def isPointInStroke(self) -> None:
+    def isPointInStroke(self) -> None:  # noqa: N802
         """Add isPointInStroke."""
         self.ctx.isPointInStroke()
 
-    def lineTo(self, x: float, y: float) -> None:
+    def lineTo(self, x: float, y: float) -> None:  # noqa: N802
         """Make a  line to the x, y given."""
         self.ctx.lineTo(x, y)
 
-    def measureText(self) -> None:
+    def measureText(self) -> None:  # noqa: N802
         """Add measureText."""
         self.ctx.measureText()
 
-    def moveTo(self, x: float, y: float) -> None:
+    def moveTo(self, x: float, y: float) -> None:  # noqa: N802
         """Move to the x, y given."""
         self.ctx.moveTo(x, y)
 
-    def putImageData(self) -> None:
+    def putImageData(self) -> None:  # noqa: N802
         """Add putImageData."""
         self.ctx.putImageData()
 
-    def quadraticCurveTo(self) -> None:
+    def quadraticCurveTo(self) -> None:  # noqa: N802
         """Add quadraticCurveTo."""
         self.ctx.quadraticCurveTo()
 
-    def rect(self, *args) -> None:
+    def rect(self, *_: list) -> None:
         """Set the rect."""
         self.ctx.rect()
 
@@ -259,7 +258,7 @@ class CanvasContext:
         """Add reset."""
         self.ctx.reset()
 
-    def resetTransform(self) -> None:
+    def resetTransform(self) -> None:  # noqa: N802
         """Add resetTransform."""
         self.ctx.resetTransform()
 
@@ -271,7 +270,7 @@ class CanvasContext:
         """Add rotate."""
         self.ctx.rotate()
 
-    def roundRect(self) -> None:
+    def roundRect(self) -> None:  # noqa: N802
         """Add roundRect."""
         self.ctx.roundRect()
 
@@ -283,11 +282,11 @@ class CanvasContext:
         """Add scale."""
         self.ctx.scale()
 
-    def setLineDash(self) -> None:
+    def setLineDash(self) -> None:  # noqa: N802
         """Add setLineDash."""
         self.ctx.setLineDash()
 
-    def setTransform(self) -> None:
+    def setTransform(self) -> None:  # noqa: N802
         """Add setTransform."""
         self.ctx.setTransform()
 
@@ -295,11 +294,11 @@ class CanvasContext:
         """Add stroke."""
         self.ctx.stroke()
 
-    def strokeRect(self) -> None:
+    def strokeRect(self) -> None:  # noqa: N802
         """Add strokeRect."""
         self.ctx.strokeRect()
 
-    def strokeText(self) -> None:
+    def strokeText(self) -> None:  # noqa: N802
         """Add strokeText."""
         self.ctx.strokeText()
 

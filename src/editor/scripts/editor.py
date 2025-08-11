@@ -4,44 +4,29 @@ from js import (  # pyright: ignore[reportMissingImports]
     Image,
     Math,
     MouseEvent,
-    Object,
     document,
     window,
 )
 from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
-from .canvas_ctx import CanvasSettings, CanvasContext
+
+from .canvas_ctx import CanvasContext, CanvasSettings
 
 canvas = document.getElementById("image-canvas")
 
-<<<<<<< HEAD
 settings = CanvasSettings()
+
 ctx = CanvasContext(settings)
-=======
 canvas.style.imageRendering = "pixelated"
 canvas.style.imageRendering = "crisp-edges"
 
-settings = Object()
-settings.willReadFrequently = True
 
-ctx = canvas.getContext("2d", settings)
 ctx.imageSmoothingEnabled = False
->>>>>>> e440dfac5c95d2c837a1376961cba7ff9a647f6f
 
 # Settings properties of the canvas.
 display_height = window.innerHeight * 0.95  # 95vh
 display_width = display_height * (2**0.5)  # Same ratio as an A4 sheet of paper
 
-<<<<<<< HEAD
-canvas.style.height = f"{display_height}px"
-canvas.style.width = f"{display_width}px"
-
-canvas.height = display_height * ctx.SCALE
-canvas.width = display_width * ctx.SCALE
-
-ctx.strokeStyle = "black"
-ctx.lineWidth = 5
-=======
 ctx.scale = 2  # Better resolution
 
 canvas.style.height = f"{display_height}px"
@@ -89,7 +74,6 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
         x = (int(x) + 5) // 10 * 10
         y = (int(y) + 5) // 10 * 10
     return (x, y)
->>>>>>> e440dfac5c95d2c837a1376961cba7ff9a647f6f
 
 
 @when("mousedown", "#image-canvas")
@@ -102,16 +86,10 @@ def start_path(event: MouseEvent) -> None:
     if event.button != 0:
         return
     ctx.drawing = True
-<<<<<<< HEAD
-    x, y = ctx.get_canvas_coords(event)
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-=======
     if ctx.type == "smooth":
         x, y = get_canvas_coords(event)
         ctx.beginPath()
         ctx.moveTo(x, y)
->>>>>>> e440dfac5c95d2c837a1376961cba7ff9a647f6f
 
 
 @when("mousemove", "#image-canvas")
@@ -123,11 +101,6 @@ def mouse_tracker(event: MouseEvent) -> None:
     """
     if not ctx.drawing:
         return
-<<<<<<< HEAD
-    x, y = ctx.get_canvas_coords(event)
-    ctx.lineTo(x, y)
-    ctx.stroke()
-=======
     x, y = get_canvas_coords(event)
     if ctx.type == "smooth":
         ctx.lineTo(x, y)
@@ -137,7 +110,6 @@ def mouse_tracker(event: MouseEvent) -> None:
             draw_pixel(x, y)
         elif ctx.action == "eraser":
             ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
->>>>>>> e440dfac5c95d2c837a1376961cba7ff9a647f6f
 
 
 @when("mouseup", "#image-canvas")
