@@ -1,17 +1,11 @@
 from typing import Any, Literal
 
 from js import (  # pyright: ignore[reportMissingImports]
-    HTMLCanvasElement,
-    HTMLImageElement,
-    HTMLVideoElement,
-    ImageBitmap,
     ImageData,
     MouseEvent,
-    OffscreenCanvas,
-    SVGImageElement,
-    VideoFrame,
     document,
 )
+from pyodide.ffi import JsProxy  # pyright: ignore[reportMissingImports]
 
 
 class CanvasSettings:
@@ -197,13 +191,7 @@ class CanvasContext:
 
     def drawImage(
         self,
-        image: HTMLImageElement
-        | SVGImageElement
-        | HTMLVideoElement
-        | HTMLCanvasElement
-        | ImageBitmap
-        | OffscreenCanvas
-        | VideoFrame,
+        image: JsProxy,
         dx: float,
         dy: float,
     ) -> None:

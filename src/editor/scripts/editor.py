@@ -115,16 +115,28 @@ def mouse_tracker(event: MouseEvent) -> None:
                 ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
-@when("mouseup", "#image-canvas")
+@when("mouseup", "body")
 def stop_path(_: MouseEvent) -> None:
     """Stop drawing path.
 
     Args:
         event (MouseEvent): The mouse event
     """
-    if not ctx.drawing:
-        return
-    ctx.drawing = False
+    if ctx.drawing:
+        ctx.drawing = False
+
+
+@when("mouseenter", "#image-canvas")
+def start_reentry_path(event: MouseEvent) -> None:
+    """Start a new path from the edge upon canvas entry.
+
+    Args:
+        event (MouseEvent): Mouse event
+    """
+    if ctx.drawing:
+        x, y = get_canvas_coords(event)
+        ctx.beginPath()
+        ctx.moveTo(x, y)
 
 
 @when("mouseout", "#image-canvas")
@@ -140,8 +152,6 @@ def leaves_canvas(event: MouseEvent) -> None:
         x, y = get_canvas_coords(event)
         ctx.lineTo(x, y)
         ctx.stroke()
-
-    ctx.drawing = False
 
 
 @when("mousedown", "#image-canvas")
@@ -259,7 +269,15 @@ def upload_image(e: Event) -> None:
         e (Event): Upload event
     """
     img = Image.new()
-    img.onload = lambda _: ctx.drawImage(img, 0, 0)
+
+    def draw_image(_: Event) -> None:
+        """Draws the image onto the canvas."""
+        prev_operation = ctx.globalCompositeOperation
+        ctx.globalCompositeOperation = "source-over"
+        ctx.drawImage(img, 0, 0)
+        ctx.globalCompositeOperation = prev_operation
+
+    img.onload = draw_image
     img.src = e.target.src
 
 
