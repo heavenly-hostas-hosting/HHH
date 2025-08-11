@@ -1,7 +1,6 @@
-# Following imports have the ignore flag as they are not pip installed
-from js import Event, Math, MouseEvent, Object, document, window  # pyright: ignore[reportMissingImports]
-from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
-from pyscript import when  # pyright: ignore[reportMissingImports]
+from js import Event, Math, MouseEvent, Object, document, window
+from pyodide.ffi import create_proxy
+from pyscript import when
 
 canvas = document.getElementById("image-canvas")
 
