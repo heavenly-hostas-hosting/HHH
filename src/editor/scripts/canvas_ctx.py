@@ -14,9 +14,10 @@ class CanvasContext:
     """`CanvasContext` for a HTML5 Canvas element."""
 
     # Cutsom attributes
-    SCALE: int = 2  # Better resolution
+    scale: int = 2  # Better resolution
     drawing: bool = False
     action: Literal["pen", "eraser"] = "pen"
+    type: Literal["smooth", "pixel"] = "smooth"
 
     # Builtin attributes
     canvas: Any
@@ -55,9 +56,9 @@ class CanvasContext:
         "saturation",
         "color",
         "luminosity",
-    ]
+    ] = "source-over"
 
-    imageSmoothingEnabled: Any
+    imageSmoothingEnabled: bool
     imageSmoothingQuality: Any
     langExperimental: Any
     letterSpacing: Any
@@ -81,7 +82,7 @@ class CanvasContext:
         settings: CanvasSettings,
     ) -> None:
         """Get the canvas context 2d."""
-        canvas = document.getElementById("image-canvas")
+        self.canvas = document.getElementById("image-canvas")
         self.ctx = canvas.getContext("2d", settings)
 
     ###########################################################################
@@ -146,9 +147,9 @@ class CanvasContext:
         """Add bezierCurveTo."""
         self.ctx.bezierCurveTo()
 
-    def clearRect(self) -> None:  # noqa: N802
+    def clearRect(self, x: float, y: float, width: float, height: float) -> None:  # noqa: N802
         """Add clearRect."""
-        self.ctx.clearRect()
+        self.ctx.clearRect(x, y, width, height)
 
     def clip(self) -> None:
         """Add clip."""
@@ -182,21 +183,21 @@ class CanvasContext:
         """Add drawFocusIfNeeded."""
         self.ctx.drawFocusIfNeeded()
 
-    def drawImage(self) -> None:  # noqa: N802
+    def drawImage(self, *args: list) -> None:  # noqa: N802
         """Add drawImage."""
-        self.ctx.drawImage()
+        self.ctx.drawImage(*args)
 
-    def ellipse(self) -> None:
+    def ellipse(self, *args: list) -> None:
         """Add ellipse."""
-        self.ctx.ellipse()
+        self.ctx.ellipse(*args)
 
     def fill(self) -> None:
         """Add fill."""
         self.ctx.fill()
 
-    def fillRect(self) -> None:  # noqa: N802
+    def fillRect(self, x: float, y: float, width: float, height: float) -> None:  # noqa: N802
         """Add fillRect."""
-        self.ctx.fillRect()
+        self.ctx.fillRect(x, y, width, height)
 
     def fillText(self) -> None:  # noqa: N802
         """Add fillText."""
@@ -242,9 +243,9 @@ class CanvasContext:
         """Move to the x, y given."""
         self.ctx.moveTo(x, y)
 
-    def putImageData(self) -> None:  # noqa: N802
+    def putImageData(self, *args: list) -> None:  # noqa: N802
         """Add putImageData."""
-        self.ctx.putImageData()
+        self.ctx.putImageData(*args)
 
     def quadraticCurveTo(self) -> None:  # noqa: N802
         """Add quadraticCurveTo."""
@@ -278,9 +279,9 @@ class CanvasContext:
         """Add save."""
         self.ctx.save()
 
-    def scale(self) -> None:
-        """Add scale."""
-        self.ctx.scale()
+    # def scale(self) -> None:
+    #     """Add scale."""
+    #     self.ctx.scale()
 
     def setLineDash(self) -> None:  # noqa: N802
         """Add setLineDash."""

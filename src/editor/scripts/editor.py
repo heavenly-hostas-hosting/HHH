@@ -10,7 +10,6 @@ from js import (  # pyright: ignore[reportMissingImports]
 from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
 
-from .canvas_ctx import CanvasContext, CanvasSettings
 
 canvas = document.getElementById("image-canvas")
 
@@ -68,8 +67,8 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
     Returns:
         tuple[float, float]: The x and y coordinates
     """
-    x = (event.pageX - ctx.rect.left) * ctx.scale
-    y = (event.pageY - ctx.rect.top) * ctx.scale
+    x = (event.pageX - ctx.rect_left) * ctx.scale
+    y = (event.pageY - ctx.rect_top) * ctx.scale
     if ctx.type == "pixel":
         x = (int(x) + 5) // 10 * 10
         y = (int(y) + 5) // 10 * 10
