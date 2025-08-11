@@ -1,7 +1,6 @@
 from js import Event, Math, MouseEvent, Object, document, window
 from pyodide.ffi import create_proxy
 from pyscript import when
-
 canvas = document.getElementById("image-canvas")
 
 settings = Object()
@@ -124,10 +123,7 @@ def canvas_click(event: MouseEvent) -> None:
         ctx.fill()
 
 
-@when(
-    "change",
-    ".colour-picker div div div input",
-)
+@when("colourChange","body")
 def colour_change(event: Event) -> None:
     """Handle colour change.
 
@@ -135,7 +131,7 @@ def colour_change(event: Event) -> None:
         event (Event): Change event
 
     """
-    ctx.strokeStyle = event.target.value
+    ctx.strokeStyle = window.pen.colour
 
 
 @when("change", ".width-input")
