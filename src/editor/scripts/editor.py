@@ -1,4 +1,5 @@
 # Following imports have the ignore flag as they are not pip installed
+from canvas_ctx import CanvasContext, CanvasSettings
 from js import (  # pyright: ignore[reportMissingImports]
     Event,
     Image,
@@ -9,7 +10,6 @@ from js import (  # pyright: ignore[reportMissingImports]
 )
 from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
-
 
 canvas = document.getElementById("image-canvas")
 
