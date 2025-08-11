@@ -50,6 +50,42 @@ def reset_confirmation(*, mode_value: bool = False) -> None:
     dialog.open()
 
 
+# I really don't want to do this but I don't know how else to achieve it
+global_vars = {
+    "type_programatically_changed": False,
+}
+
+
+def revert_type() -> None:
+    """Revert the type change when cancel is clicked."""
+    global_vars["type_programatically_changed"] = True
+    type_toggle.set_visibility(False)
+    type_toggle.value = "smooth" if type_toggle.value == "pixel" else "pixel"
+    type_toggle.update()
+    type_toggle.set_visibility(True)
+    global_vars["type_programatically_changed"] = False
+
+
+def change_type(*, mode_value: bool = False) -> None:
+    """Prompt user to reset canvas."""
+    if global_vars["type_programatically_changed"]:
+        return
+    with ui.dialog() as dialog, ui.card():
+        ui.label("Are you sure you want to change the drawing mode? This will clear the canvas.")
+        with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
+            ui.button(
+                "Cancel",
+                on_click=lambda: (
+                    dialog.close(),
+                    revert_type(),
+                ),
+            )
+            ui.button("Change", on_click=lambda: (do_reset(mode_value=mode_value), dialog.close())).props(
+                "color='red'",
+            )
+    dialog.open()
+
+
 def reset() -> None:
     """Reset canvas."""
     ui.run_javascript("""
@@ -117,10 +153,10 @@ with ui.row().style("display: flex; width: 100%;"):
         ).classes(
             "max-w-full",
         ).props("accept='image/*' id='file-input'")
-        ui.toggle(
+        type_toggle = ui.toggle(
             {"smooth": "✍️", "pixel": "👾"},
             value="smooth",
-            on_change=lambda e: reset_confirmation(mode_value=e.value),
+            on_change=lambda e: change_type(mode_value=e.value),
         ).props("id='type-select'")
 
     ui.element("canvas").props("id='image-canvas'").style(
