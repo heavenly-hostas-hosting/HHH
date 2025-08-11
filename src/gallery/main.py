@@ -24,15 +24,9 @@ CAMERA.position.set(0, 0, cameraRange)
 setcolor = "#000000"
 SCENE = THREE.Scene.new()
 SCENE.background = THREE.Color.new(setcolor)
-SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
+# SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
 
 CAMERA.lookAt(SCENE.position)
-
-SCENE_GROUP = THREE.Object3D.new()
-SCENE.add(SCENE_GROUP)
-
-PARTICULAR_GROUP = THREE.Object3D.new()
-SCENE_GROUP.add(PARTICULAR_GROUP)
 
 MODULAR_GROUP = THREE.Object3D.new()
 SCENE.add(MODULAR_GROUP)
@@ -54,10 +48,7 @@ def mathRandom(num=1):
 
 
 def generate_lights() -> None:
-    ambientLight = THREE.AmbientLight.new(0xFFFFFF, 0.1)
-    SCENE.add(ambientLight)
-
-    light = THREE.SpotLight.new(0xFFFFFF, 3)
+    light = THREE.SpotLight.new(0xFF_FF_FF, 3)
     light.position.set(5, 5, 2)
     light.castShadow = True
     light.shadow.mapSize.width = 10000
@@ -65,53 +56,23 @@ def generate_lights() -> None:
     light.penumbra = 0.5
     SCENE.add(light)
 
-    lightBack = THREE.PointLight.new(0x0FFFFF, 1)
+    lightBack = THREE.PointLight.new(0xEF_FF_FF, 1)
     lightBack.position.set(0, -3, -1)
     SCENE.add(lightBack)
 
-    rectSize = 2
-    intensity = 14
-    rectLight = THREE.RectAreaLight.new(0x0FFFFF, intensity, rectSize, rectSize)
-    rectLight.position.set(0, 0, 1)
-    rectLight.lookAt(0, 0, 0)
-    SCENE.add(rectLight)
+    ambientLight = THREE.AmbientLight.new(0xFFFFFF, 0.3)
+    SCENE.add(ambientLight)
 
-
-def create_cubes(mathRandom, modularGroup):
-    i = 0
-    while i < 30:
-        geometry = THREE.IcosahedronGeometry.new()
-        perms = Object.fromEntries(
-            to_js(
-                {
-                    "flatShading": True,
-                    "color": "#111111",
-                    "transparent": False,
-                    "opacity": 1,
-                    "wireframe": False,
-                }
-            )
-        )
-
-        material = THREE.MeshStandardMaterial.new(perms)
-        cube = THREE.Mesh.new(geometry, material)
-        cube.speedRotation = Math.random() * 0.1
-        cube.positionX = mathRandom()
-        cube.positionY = mathRandom()
-        cube.positionZ = mathRandom()
-        cube.castShadow = True
-        cube.receiveShadow = True
-        newScaleValue = mathRandom(0.3)
-        cube.scale.set(newScaleValue, newScaleValue, newScaleValue)
-        cube.rotation.x = mathRandom(180 * Math.PI / 180)
-        cube.rotation.y = mathRandom(180 * Math.PI / 180)
-        cube.rotation.z = mathRandom(180 * Math.PI / 180)
-        cube.position.set(cube.positionX, cube.positionY, cube.positionZ)
-        modularGroup.add(cube)
-        i += 1
+    # rectSize = 2
+    # intensity = 14
+    # rectLight = THREE.RectAreaLight.new(0x0FFFFF, intensity, rectSize, rectSize)
+    # rectLight.position.set(0, 0, 1)
+    # rectLight.lookAt(0, 0, 0)
+    # SCENE.add(rectLight)
 
 
 def tree_print(x, indent=0):
+    # Prints a 3D model's tree structure
     qu = '"'
     output = " " * 4 * indent + f"{x.name or qu * 2} ({x.type})"
     for i in x.children:
@@ -122,7 +83,24 @@ def tree_print(x, indent=0):
 def load_gallery():
     def inner_loader(gltf):
         obj = gltf.scene
-        SCENE.add(obj)
+        MODULAR_GROUP.add(obj)
+
+        obj.position.x = 0
+        obj.position.y = 0
+        obj.position.z = 0
+
+        obj.rotation.x = 0
+        obj.rotation.y = 0
+        obj.rotation.z = 0
+
+        obj.scale.x = 0.25
+        obj.scale.y = 0.25
+        obj.scale.z = 0.25
+
+        # Backface culling
+        for v in obj.children[0].children:
+            v.material.side = THREE.FrontSide
+
         print(f"Loading done! Here's its component structure:")
         print(tree_print(obj))
 
@@ -134,56 +112,15 @@ def load_gallery():
 
     loader = GLTFLoader.new()
     loader.load(
-        "assets/CesiumMan.glb",
+        "./assets/gallery.glb",
         create_proxy(inner_loader),
         create_proxy(inner_progress),
         create_proxy(inner_error),
     )
 
 
-def generateParticle(mathRandom, particularGroup, num, amp=2):
-    particle_perms = {"color": "#FFFFFF", "side": THREE.DoubleSide}
-    particle_perms = Object.fromEntries(to_js(particle_perms))
-
-    gmaterial = THREE.MeshPhysicalMaterial.new(particle_perms)
-    gparticular = THREE.CircleGeometry.new(0.2, 5)
-    i = 0
-    while i < num:
-        pscale = 0.001 + Math.abs(mathRandom(0.03))
-        particular = THREE.Mesh.new(gparticular, gmaterial)
-        particular.position.set(mathRandom(amp), mathRandom(amp), mathRandom(amp))
-        particular.rotation.set(mathRandom(), mathRandom(), mathRandom())
-        particular.scale.set(pscale, pscale, pscale)
-        particular.speedValue = mathRandom(1)
-        particularGroup.add(particular)
-        i += 1
-
-
 async def main():
     while True:
-        time = performance.now() * 0.0003
-        i = 0
-        while i < PARTICULAR_GROUP.children.length:
-            newObject = PARTICULAR_GROUP.children[i]
-            newObject.rotation.x += newObject.speedValue / 10
-            newObject.rotation.y += newObject.speedValue / 10
-            newObject.rotation.z += newObject.speedValue / 10
-            i += 1
-
-        i = 0
-        while i < MODULAR_GROUP.children.length:
-            newCubes = MODULAR_GROUP.children[i]
-            newCubes.rotation.x += 0.008
-            newCubes.rotation.y += 0.005
-            newCubes.rotation.z += 0.003
-
-            newCubes.position.x = Math.sin(time * newCubes.positionZ) * newCubes.positionY
-            newCubes.position.y = Math.cos(time * newCubes.positionX) * newCubes.positionZ
-            newCubes.position.z = Math.sin(time * newCubes.positionY) * newCubes.positionX
-            i += 1
-
-        PARTICULAR_GROUP.rotation.y += 0.005
-
         uSpeed = 0.1
         MODULAR_GROUP.rotation.y -= ((MOUSE.x * 4) + MODULAR_GROUP.rotation.y) * uSpeed
         MODULAR_GROUP.rotation.x -= ((-MOUSE.y * 4) + MODULAR_GROUP.rotation.x) * uSpeed
@@ -194,7 +131,5 @@ async def main():
 
 if __name__ == "__main__":
     generate_lights()
-    create_cubes(mathRandom, MODULAR_GROUP)
     load_gallery()
-    generateParticle(mathRandom, PARTICULAR_GROUP, 200, 2)
     asyncio.ensure_future(main())
