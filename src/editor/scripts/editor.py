@@ -1,6 +1,7 @@
 # Following imports have the ignore flag as they are not pip installed
 from canvas_ctx import CanvasContext, CanvasSettings
 from js import (  # pyright: ignore[reportMissingImports]
+    Object,
     Event,
     Image,
     Math,
@@ -13,9 +14,10 @@ from pyscript import when  # pyright: ignore[reportMissingImports]
 
 canvas = document.getElementById("image-canvas")
 
-settings = CanvasSettings()
+settings = Object()
+settings.willReadFrequently = True
 
-ctx = CanvasContext(settings)
+ctx: CanvasContext = canvas.getContext("2d", settings)
 canvas.style.imageRendering = "pixelated"
 canvas.style.imageRendering = "crisp-edges"
 
@@ -67,8 +69,8 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
     Returns:
         tuple[float, float]: The x and y coordinates
     """
-    x = (event.pageX - ctx.rect_left) * ctx.scale
-    y = (event.pageY - ctx.rect_top) * ctx.scale
+    x = (event.pageX - ctx.rect.left) * ctx.scale
+    y = (event.pageY - ctx.rect.top) * ctx.scale
     if ctx.type == "pixel":
         x = (int(x) + 5) // 10 * 10
         y = (int(y) + 5) // 10 * 10
@@ -101,14 +103,16 @@ def mouse_tracker(event: MouseEvent) -> None:
     if not ctx.drawing:
         return
     x, y = get_canvas_coords(event)
-    if ctx.type == "smooth":
-        ctx.lineTo(x, y)
-        ctx.stroke()
-    elif ctx.type == "pixel":
-        if ctx.action == "pen":
-            draw_pixel(x, y)
-        elif ctx.action == "eraser":
-            ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+    match ctx.type:
+        case "smooth":
+            ctx.lineTo(x, y)
+            ctx.stroke()
+
+        case "pixel":
+            if ctx.action == "pen":
+                draw_pixel(x, y)
+            elif ctx.action == "eraser":
+                ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
 @when("mouseup", "#image-canvas")

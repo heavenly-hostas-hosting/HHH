@@ -83,7 +83,7 @@ class CanvasContext:
     ) -> None:
         """Get the canvas context 2d."""
         self.canvas = document.getElementById("image-canvas")
-        self.ctx = canvas.getContext("2d", settings)
+        self.ctx = self.canvas.getContext("2d", settings)
 
     ###########################################################################
     # properties
@@ -243,9 +243,60 @@ class CanvasContext:
         """Move to the x, y given."""
         self.ctx.moveTo(x, y)
 
-    def putImageData(self, *args: list) -> None:  # noqa: N802
-        """Add putImageData."""
-        self.ctx.putImageData(*args)
+    def putImageData(  # noqa: PLR0913
+        self,
+        imageData,
+        dx: float,
+        dy: float,
+        dirtyX: float | None = None,
+        dirtyY: float | None = None,
+        dirtyWidth: float | None = None,
+        dirtyHeight: float | None = None,
+    ) -> None:  # noqa: N802
+        """Paints data from the given ImageData object onto the canvas. If a
+        dirty rectangle is provided, only the pixels from that rectangle are
+        painted. This method is not affected by the canvas transformation
+        matrix.
+
+        Parameters
+        ----------
+        imageData
+            An ImageData object containing the array of pixel values.
+
+        dx: float
+            Horizontal position (x coordinate) at which to place the image data
+            in the destination canvas.
+
+        dy: float
+            Vertical position (y coordinate) at which to place the image data
+            in the destination canvas.
+
+        dirtyX: float | None = None
+            Horizontal position (x coordinate) of the top-left corner from
+            which the image data will be extracted. Defaults to 0.
+
+        dirtyY: float | None = None
+            Vertical position (y coordinate) of the top-left corner from which
+            the image data will be extracted. Defaults to 0.
+
+        dirtyWidth: float | None = None
+            Width of the rectangle to be painted. Defaults to the width of the
+            image data.
+
+        dirtyHeight: float | None = None
+            Height of the rectangle to be painted. Defaults to the height of
+            the image data.
+        """
+
+        self.ctx.putImageData(
+            imageData,
+            dx,
+            dy,
+            dirtyX,
+            dirtyY,
+            dirtyWidth,
+            dirtyHeight,
+        )
 
     def quadraticCurveTo(self) -> None:  # noqa: N802
         """Add quadraticCurveTo."""

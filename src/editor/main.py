@@ -4,7 +4,7 @@ import pathlib
 import random
 
 from nicegui import app, ui
-from nicegui.events import UploadEventArguments
+from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
@@ -91,6 +91,15 @@ def upload_image(e: UploadEventArguments) -> None:
     """)
 
 
+def switch_action(e: ValueChangeEventArguments):
+    ui.run_javascript(f"""
+    const event = new Event('change');
+    const actionSelect = document.querySelector("#action-select");
+    actionSelect.setAttribute("value", "{e.value}");
+    actionSelect.dispatchEvent(event);
+    """)
+
+
 ui.element("img").props("id='file-upload'").style("display: none;")
 
 with ui.row().style("display: flex; width: 100%;"):
@@ -119,7 +128,11 @@ with ui.row().style("display: flex; width: 100%;"):
 
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
-        ui.toggle({"pen": "🖊️", "eraser": "🧽"}, value="pen", on_change=lambda _: reset_confirmation()).props(
+        ui.toggle(
+            {"pen": "🖊️", "eraser": "🧽"},
+            value="pen",
+            on_change=switch_action,
+        ).props(
             "id='action-select'",
         )
         ui.separator().classes("w-full")

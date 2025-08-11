@@ -48,6 +48,9 @@ ignore = [
   "D415",
   # Docstring quotes.
   "D301",
+  # lowercase issues.
+  "N802",
+  "N803",
   # clas scope should not be mixedCase
   "N815",
   # Builtins.
