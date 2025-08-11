@@ -1,71 +1,97 @@
 ## PLACEHOLDER, TAKEN FROM:
 ## https://pyscript.com/@examples/webgl-icosahedron/latest
 
+## DOCS
+## https://threejs.org/docs/
+
 from pyodide.ffi import to_js
 from pyscript import when, window, document
 from js import Math, THREE, performance, Object
 import asyncio
 
-mouse = THREE.Vector2.new()
 
-renderer = THREE.WebGLRenderer.new({"antialias": True})
-renderer.setSize(1000, 1000)
-renderer.shadowMap.enabled = False
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
-renderer.shadowMap.needsUpdate = True
+RENDERER = THREE.WebGLRenderer.new({"antialias": False})
+document.body.appendChild(RENDERER.domElement)
+RENDERER.setSize(1000, 1000)
+RENDERER.shadowMap.enabled = False
+RENDERER.shadowMap.type = THREE.PCFSoftShadowMap
+RENDERER.shadowMap.needsUpdate = True
+RENDERER.setSize(window.innerWidth, window.innerHeight)
 
-document.body.appendChild(renderer.domElement)
+CAMERA = THREE.PerspectiveCamera.new(35, window.innerWidth / window.innerHeight, 1, 500)
+cameraRange = 3
+CAMERA.position.set(0, 0, cameraRange)
 
+setcolor = "#000000"
+SCENE = THREE.Scene.new()
+SCENE.background = THREE.Color.new(setcolor)
+SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
+
+CAMERA.lookAt(SCENE.position)
+
+SCENE_GROUP = THREE.Object3D.new()
+SCENE.add(SCENE_GROUP)
+
+PARTICULAR_GROUP = THREE.Object3D.new()
+SCENE_GROUP.add(PARTICULAR_GROUP)
+
+MODULAR_GROUP = THREE.Object3D.new()
+SCENE.add(MODULAR_GROUP)
+
+
+MOUSE = THREE.Vector2.new()
 
 @when("mousemove", "body")
 def onMouseMove(event):
     event.preventDefault()
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
-
-
-camera = THREE.PerspectiveCamera.new(35, window.innerWidth / window.innerHeight, 1, 500)
-scene = THREE.Scene.new()
-cameraRange = 3
-
-camera.aspect = window.innerWidth / window.innerHeight
-camera.updateProjectionMatrix()
-renderer.setSize(window.innerWidth, window.innerHeight)
-
-setcolor = "#000000"
-
-scene.background = THREE.Color.new(setcolor)
-scene.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
-
-sceneGroup = THREE.Object3D.new()
-particularGroup = THREE.Object3D.new()
+    MOUSE.x = (event.clientX / window.innerWidth) * 2 - 1
+    MOUSE.y = -(event.clientY / window.innerHeight) * 2 + 1
 
 
 def mathRandom(num=1):
     setNumber = -Math.random() * num + Math.random() * num
     return setNumber
 
+def genearate_lights()->None:
+    ambientLight = THREE.AmbientLight.new(0xFFFFFF, 0.1)
+    SCENE.add(ambientLight)
 
-particularGroup = THREE.Object3D.new()
-modularGroup = THREE.Object3D.new()
+    light = THREE.SpotLight.new(0xFFFFFF, 3)
+    light.position.set(5, 5, 2)
+    light.castShadow = True
+    light.shadow.mapSize.width = 10000
+    light.shadow.mapSize.height = light.shadow.mapSize.width
+    light.penumbra = 0.5
+    SCENE.add(light)
 
-perms = {
-    "flatShading": True,
-    "color": "#111111",
-    "transparent": False,
-    "opacity": 1,
-    "wireframe": False,
-}
-perms = Object.fromEntries(to_js(perms))
+    lightBack = THREE.PointLight.new(0x0FFFFF, 1)
+    lightBack.position.set(0, -3, -1)
+    SCENE.add(lightBack)
 
-particle_perms = {"color": "#FFFFFF", "side": THREE.DoubleSide}
-particle_perms = Object.fromEntries(to_js(particle_perms))
 
+    rectSize = 2
+    intensity = 14
+    rectLight = THREE.RectAreaLight.new(0x0FFFFF, intensity, rectSize, rectSize)
+    rectLight.position.set(0, 0, 1)
+    rectLight.lookAt(0, 0, 0)
+    SCENE.add(rectLight)
 
 def create_cubes(mathRandom, modularGroup):
     i = 0
     while i < 30:
         geometry = THREE.IcosahedronGeometry.new()
+        perms = Object.fromEntries(
+            to_js(
+                {
+                    "flatShading": True,
+                    "color": "#111111",
+                    "transparent": False,
+                    "opacity": 1,
+                    "wireframe": False,
+                }
+            )
+        )
+
         material = THREE.MeshStandardMaterial.new(perms)
         cube = THREE.Mesh.new(geometry, material)
         cube.speedRotation = Math.random() * 0.1
@@ -84,10 +110,10 @@ def create_cubes(mathRandom, modularGroup):
         i += 1
 
 
-create_cubes(mathRandom, modularGroup)
-
-
 def generateParticle(mathRandom, particularGroup, num, amp=2):
+    particle_perms = {"color": "#FFFFFF", "side": THREE.DoubleSide}
+    particle_perms = Object.fromEntries(to_js(particle_perms))
+
     gmaterial = THREE.MeshPhysicalMaterial.new(particle_perms)
     gparticular = THREE.CircleGeometry.new(0.2, 5)
     i = 0
@@ -102,59 +128,20 @@ def generateParticle(mathRandom, particularGroup, num, amp=2):
         i += 1
 
 
-generateParticle(mathRandom, particularGroup, 200, 2)
-
-sceneGroup.add(particularGroup)
-scene.add(modularGroup)
-scene.add(sceneGroup)
-
-camera.position.set(0, 0, cameraRange)
-cameraValue = False
-
-ambientLight = THREE.AmbientLight.new(0xFFFFFF, 0.1)
-
-light = THREE.SpotLight.new(0xFFFFFF, 3)
-light.position.set(5, 5, 2)
-light.castShadow = True
-light.shadow.mapSize.width = 10000
-light.shadow.mapSize.height = light.shadow.mapSize.width
-light.penumbra = 0.5
-
-lightBack = THREE.PointLight.new(0x0FFFFF, 1)
-lightBack.position.set(0, -3, -1)
-
-scene.add(sceneGroup)
-scene.add(light)
-scene.add(lightBack)
-
-rectSize = 2
-intensity = 14
-rectLight = THREE.RectAreaLight.new(0x0FFFFF, intensity, rectSize, rectSize)
-rectLight.position.set(0, 0, 1)
-rectLight.lookAt(0, 0, 0)
-scene.add(rectLight)
-
-raycaster = THREE.Raycaster.new()
-uSpeed = 0.1
-
-time = 0.0003
-camera.lookAt(scene.position)
-
-
 async def main():
     while True:
         time = performance.now() * 0.0003
         i = 0
-        while i < particularGroup.children.length:
-            newObject = particularGroup.children[i]
+        while i < PARTICULAR_GROUP.children.length:
+            newObject = PARTICULAR_GROUP.children[i]
             newObject.rotation.x += newObject.speedValue / 10
             newObject.rotation.y += newObject.speedValue / 10
             newObject.rotation.z += newObject.speedValue / 10
             i += 1
 
         i = 0
-        while i < modularGroup.children.length:
-            newCubes = modularGroup.children[i]
+        while i < MODULAR_GROUP.children.length:
+            newCubes = MODULAR_GROUP.children[i]
             newCubes.rotation.x += 0.008
             newCubes.rotation.y += 0.005
             newCubes.rotation.z += 0.003
@@ -170,13 +157,18 @@ async def main():
             )
             i += 1
 
-        particularGroup.rotation.y += 0.005
+        PARTICULAR_GROUP.rotation.y += 0.005
 
-        modularGroup.rotation.y -= ((mouse.x * 4) + modularGroup.rotation.y) * uSpeed
-        modularGroup.rotation.x -= ((-mouse.y * 4) + modularGroup.rotation.x) * uSpeed
+        uSpeed = 0.1
+        MODULAR_GROUP.rotation.y -= ((MOUSE.x * 4) + MODULAR_GROUP.rotation.y) * uSpeed
+        MODULAR_GROUP.rotation.x -= ((-MOUSE.y * 4) + MODULAR_GROUP.rotation.x) * uSpeed
 
-        renderer.render(scene, camera)
+        RENDERER.render(SCENE, CAMERA)
         await asyncio.sleep(0.02)
 
 
-asyncio.ensure_future(main())
+if __name__ == "__main__":
+    generate_lights()
+    create_cubes(mathRandom, MODULAR_GROUP)
+    generateParticle(mathRandom, PARTICULAR_GROUP, 200, 2)
+    asyncio.ensure_future(main())
