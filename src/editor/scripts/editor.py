@@ -1,18 +1,38 @@
 # Following imports have the ignore flag as they are not pip installed
-from js import Event, Math, MouseEvent, document, window  # pyright: ignore[reportMissingImports]
+from js import (  # pyright: ignore[reportMissingImports]
+    Event,
+    Image,
+    Math,
+    MouseEvent,
+    Object,
+    document,
+    window,
+)
 from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
 from .canvas_ctx import CanvasSettings, CanvasContext
 
 canvas = document.getElementById("image-canvas")
 
+<<<<<<< HEAD
 settings = CanvasSettings()
 ctx = CanvasContext(settings)
+=======
+canvas.style.imageRendering = "pixelated"
+canvas.style.imageRendering = "crisp-edges"
+
+settings = Object()
+settings.willReadFrequently = True
+
+ctx = canvas.getContext("2d", settings)
+ctx.imageSmoothingEnabled = False
+>>>>>>> e440dfac5c95d2c837a1376961cba7ff9a647f6f
 
 # Settings properties of the canvas.
 display_height = window.innerHeight * 0.95  # 95vh
 display_width = display_height * (2**0.5)  # Same ratio as an A4 sheet of paper
 
+<<<<<<< HEAD
 canvas.style.height = f"{display_height}px"
 canvas.style.width = f"{display_width}px"
 
@@ -21,6 +41,55 @@ canvas.width = display_width * ctx.SCALE
 
 ctx.strokeStyle = "black"
 ctx.lineWidth = 5
+=======
+ctx.scale = 2  # Better resolution
+
+canvas.style.height = f"{display_height}px"
+canvas.style.width = f"{display_width}px"
+
+canvas.height = display_height * ctx.scale
+canvas.width = display_width * ctx.scale
+
+ctx.strokeStyle = "black"
+ctx.lineWidth = 5
+ctx.lineCap = "round"
+ctx.lineJoin = "round"
+
+ctx.drawing = False
+ctx.action = "pen"
+ctx.type = "smooth"
+ctx.rect = canvas.getBoundingClientRect()
+
+PIXEL_SIZE = 8
+
+
+def draw_pixel(x: float, y: float) -> None:
+    """Draws the pixel on the canvas.
+
+    Args:
+        x (float): X coordinate
+        y (float): Y coordinate
+    """
+    ctx.fillStyle = ctx.strokeStyle
+    ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+
+
+def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
+    """Give the canvas coordinates.
+
+    Args:
+        event (MouseEvent): The mouse event
+
+    Returns:
+        tuple[float, float]: The x and y coordinates
+    """
+    x = (event.pageX - ctx.rect.left) * ctx.scale
+    y = (event.pageY - ctx.rect.top) * ctx.scale
+    if ctx.type == "pixel":
+        x = (int(x) + 5) // 10 * 10
+        y = (int(y) + 5) // 10 * 10
+    return (x, y)
+>>>>>>> e440dfac5c95d2c837a1376961cba7ff9a647f6f
 
 
 @when("mousedown", "#image-canvas")
@@ -33,9 +102,16 @@ def start_path(event: MouseEvent) -> None:
     if event.button != 0:
         return
     ctx.drawing = True
+<<<<<<< HEAD
     x, y = ctx.get_canvas_coords(event)
     ctx.beginPath()
     ctx.moveTo(x, y)
+=======
+    if ctx.type == "smooth":
+        x, y = get_canvas_coords(event)
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+>>>>>>> e440dfac5c95d2c837a1376961cba7ff9a647f6f
 
 
 @when("mousemove", "#image-canvas")
@@ -47,9 +123,21 @@ def mouse_tracker(event: MouseEvent) -> None:
     """
     if not ctx.drawing:
         return
+<<<<<<< HEAD
     x, y = ctx.get_canvas_coords(event)
     ctx.lineTo(x, y)
     ctx.stroke()
+=======
+    x, y = get_canvas_coords(event)
+    if ctx.type == "smooth":
+        ctx.lineTo(x, y)
+        ctx.stroke()
+    elif ctx.type == "pixel":
+        if ctx.action == "pen":
+            draw_pixel(x, y)
+        elif ctx.action == "eraser":
+            ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+>>>>>>> e440dfac5c95d2c837a1376961cba7ff9a647f6f
 
 
 @when("mouseup", "#image-canvas")
@@ -73,13 +161,15 @@ def leaves_canvas(event: MouseEvent) -> None:
     """
     if not ctx.drawing:
         return
-    x, y = ctx.get_canvas_coords(event)
-    ctx.lineTo(x, y)
-    ctx.stroke()  # Draws the line to the point on the edge where the mouse leaves the canvas
+    if ctx.type == "smooth":
+        x, y = get_canvas_coords(event)
+        ctx.lineTo(x, y)
+        ctx.stroke()
+
     ctx.drawing = False
 
 
-@when("click", "#image-canvas")
+@when("mousedown", "#image-canvas")
 def canvas_click(event: MouseEvent) -> None:
     """Handle mouse clicking canvas.
 
@@ -88,13 +178,19 @@ def canvas_click(event: MouseEvent) -> None:
     """
     if event.button != 0:
         return
-    x, y = ctx.get_canvas_coords(event)
-    ctx.beginPath()
-    ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
-    if ctx.action == "pen":
-        ctx.stroke()
-    elif ctx.action == "eraser":
-        ctx.fill()
+    x, y = get_canvas_coords(event)
+    if ctx.type == "smooth":
+        ctx.beginPath()
+        ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
+        if ctx.action == "pen":
+            ctx.stroke()
+        elif ctx.action == "eraser":
+            ctx.fill()
+    elif ctx.type == "pixel":
+        if ctx.action == "pen":
+            draw_pixel(x, y)
+        elif ctx.action == "eraser":
+            ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
 @when("colourChange", "body")
@@ -131,6 +227,23 @@ def action_change(event: Event) -> None:
         ctx.globalCompositeOperation = "destination-out"
 
 
+@when("change", "#type-select")
+def type_change(event: Event) -> None:
+    """Handle type change.
+
+    Args:
+        event (Event): Change event
+    """
+    ctx.type = event.target.getAttribute("value")
+    if ctx.type == "smooth":
+        ctx.imageSmoothingEnabled = True
+        ctx.scale = 2
+    elif ctx.type == "pixel":
+        ctx.imageSmoothingEnabled = False
+        ctx.scale = 0.5
+    resize(event)
+
+
 @when("reset", "body")
 def reset_board(_: Event) -> None:
     """Reset the canvas.
@@ -149,6 +262,32 @@ def reset_board(_: Event) -> None:
     ctx.globalCompositeOperation = global_composite_operation
 
 
+@when("click", "#download-button")
+def download_image(_: Event) -> None:
+    """Download the canvas content as an image.
+
+    Args:
+        _ (Event): Click event
+    """
+    link = document.createElement("a")
+    link.download = "download.avif"
+    link.href = canvas.toDataURL()
+    link.click()
+    link.remove()
+
+
+@when("change", "#file-upload")
+def upload_image(e: Event) -> None:
+    """Handle image upload.
+
+    Args:
+        e (Event): Upload event
+    """
+    img = Image.new()
+    img.onload = lambda _: ctx.drawImage(img, 0, 0)
+    img.src = e.target.src
+
+
 @create_proxy
 def resize(_: Event) -> None:
     """Resize canvas according to window.
@@ -156,6 +295,7 @@ def resize(_: Event) -> None:
     Args:
         _ (Event): Resize event
     """
+    window.console.log(ctx.scale)
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
@@ -167,8 +307,8 @@ def resize(_: Event) -> None:
     canvas.style.height = f"{display_height}px"
     canvas.style.width = f"{display_width}px"
 
-    canvas.height = display_height * ctx.SCALE
-    canvas.width = display_width * ctx.SCALE
+    canvas.height = display_height * ctx.scale
+    canvas.width = display_width * ctx.scale
 
     ctx.rect = canvas.getBoundingClientRect()
     ctx.putImageData(data, 0, 0)
