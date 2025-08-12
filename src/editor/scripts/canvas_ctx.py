@@ -18,15 +18,46 @@ class CanvasSettings:
 class CanvasContext:
     """`CanvasContext` for a HTML5 Canvas element."""
 
-    # Cutsom attributes
+    # Custom attributes
     scaled_by: float = 2  # Better resolution
     drawing: bool = False
     action: Literal["pen", "eraser", "smudge"] = "pen"
     type: Literal["smooth", "pixel"] = "smooth"
+    current_img: Any
     bounding_rect: Any
     last_x: float
     last_y: float
     smudge_data: ImageData
+    prev_data: ImageData
+    moving_image: bool
+    prev_operation: Literal[
+        "source-over",
+        "source-in",
+        "source-out",
+        "source-atop",
+        "destination-over",
+        "destination-in",
+        "destination-out",
+        "destination-atop",
+        "lighter",
+        "copy",
+        "xor",
+        "multiply",
+        "screen",
+        "overlay",
+        "darken",
+        "lighten",
+        "color-dodge",
+        "color-burn",
+        "hard-light",
+        "soft-light",
+        "difference",
+        "exclusion",
+        "hue",
+        "saturation",
+        "color",
+        "luminosity",
+    ]
 
     # Builtin attributes
     canvas: Any

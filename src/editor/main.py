@@ -137,10 +137,15 @@ def upload_image(e: UploadEventArguments) -> None:
     ui.notify(f"Uploaded {e.name}")
     content = base64.b64encode(e.content.read()).decode("utf-8")
     ui.run_javascript(f"""
-        const event = new Event("change");
+        let event = new Event("change");
         const fileUpload = document.querySelector("#file-upload");
         fileUpload.src = "data:{e.type};base64,{content}"
         fileUpload.dispatchEvent(event);
+
+        // The following event is fired in case the image upload is above the canvas.
+        // This would change the getBoundingClientRect() of the canvas.
+        event = new Event('resize');
+        window.dispatchEvent(event);
     """)
 
 
@@ -170,12 +175,6 @@ with ui.row().style("display: flex; width: 100%;"):
         ui.button("Download").props("id='download-button'")
         file_uploader = ui.upload(
             label="Upload file",
-            # The following event is fired in case the image upload is above the canvas.
-            # This would change the getBoundingClientRect() of the canvas.
-            on_begin_upload=lambda: ui.run_javascript("""
-                const event = new Event('resize');
-                window.dispatchEvent(event);
-            """),
             auto_upload=True,
             on_upload=upload_image,
             on_rejected=lambda _: ui.notify("There was an issue with the upload."),

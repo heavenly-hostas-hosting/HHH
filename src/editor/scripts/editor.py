@@ -42,10 +42,14 @@ ctx.lineWidth = 5
 ctx.lineCap = "round"
 ctx.lineJoin = "round"
 
+# Custom attributes attached so we don't need to use global vars
 ctx.drawing = False
 ctx.action = "pen"
 ctx.type = "smooth"
 ctx.bounding_rect = canvas.getBoundingClientRect()
+ctx.current_img = Image.new()
+ctx.moving_image = False
+ctx.prev_operation = "source-over"
 
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
@@ -131,10 +135,12 @@ def start_path(event: MouseEvent) -> None:
     """
     if event.button != 0:
         return
+
+    if ctx.moving_image:
+        return
     ctx.drawing = True
 
     x, y = get_canvas_coords(event)
-
     if ctx.action == "smudge":
         update_smudge_data(x, y)
     elif ctx.type == "smooth":
@@ -150,10 +156,14 @@ def mouse_tracker(event: MouseEvent) -> None:
     Args:
         event (MouseEvent): The mouse event
     """
+    x, y = get_canvas_coords(event)
+    if ctx.moving_image:
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.putImageData(ctx.prev_data, 0, 0)
+        ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        return
     if not ctx.drawing:
         return
-
-    x, y = get_canvas_coords(event)
 
     match ctx.type:
         case "smooth":
@@ -223,7 +233,11 @@ def canvas_click(event: MouseEvent) -> None:
     if event.button != 0:
         return
     x, y = get_canvas_coords(event)
-    if ctx.type == "smooth":
+
+    if ctx.moving_image:
+        ctx.moving_image = False
+        ctx.globalCompositeOperation = ctx.prev_operation
+    elif ctx.type == "smooth":
         ctx.beginPath()
         ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
         if ctx.action == "pen":
@@ -330,17 +344,11 @@ def upload_image(e: Event) -> None:
     Args:
         e (Event): Upload event
     """
-    img = Image.new()
-
-    def draw_image(_: Event) -> None:
-        """Draws the image onto the canvas."""
-        prev_operation = ctx.globalCompositeOperation
-        ctx.globalCompositeOperation = "source-over"
-        ctx.drawImage(img, 0, 0)
-        ctx.globalCompositeOperation = prev_operation
-
-    img.onload = draw_image
-    img.src = e.target.src
+    ctx.prev_operation = ctx.globalCompositeOperation
+    ctx.globalCompositeOperation = "source-over"
+    ctx.prev_data = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    ctx.current_img.src = e.target.src
+    ctx.moving_image = True
 
 
 @create_proxy
@@ -350,7 +358,6 @@ def resize(_: Event) -> None:
     Args:
         _ (Event): Resize event
     """
-    window.console.log(ctx.scaled_by)
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
@@ -377,3 +384,5 @@ def resize(_: Event) -> None:
 
 
 window.addEventListener("resize", resize)
+
+ctx.current_img.onload = resize
