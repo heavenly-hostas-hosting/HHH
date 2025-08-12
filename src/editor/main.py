@@ -146,11 +146,6 @@ def upload_image(e: UploadEventArguments) -> None:
         const fileUpload = document.querySelector("#file-upload");
         fileUpload.src = "data:{e.type};base64,{content}"
         fileUpload.dispatchEvent(event);
-
-        // The following event is fired in case the image upload is above the canvas.
-        // This would change the getBoundingClientRect() of the canvas.
-        event = new Event('resize');
-        window.dispatchEvent(event);
     """)
     # e.sender is the file upload element which has a .reset() method
     e.sender.reset()  # type: ignore  # noqa: PGH003

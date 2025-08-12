@@ -85,6 +85,30 @@ def draw_pixel(x: float, y: float) -> None:
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
+def show_action_icon(x: float, y: float) -> None:
+    """Show icon to let user know what the action would look like.
+
+    Args:
+        x (float): X coordinate
+        y (float): Y coordinate
+    """
+    if ctx.type == "smooth":
+        buffer_ctx.beginPath()
+        buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)  # Put a dot here
+        if ctx.action == "pen":
+            buffer_ctx.fill()
+        elif ctx.action == "eraser":
+            prev_width = buffer_ctx.lineWidth
+            prev_fill = buffer_ctx.fillStyle
+            buffer_ctx.lineWidth = ctx.scaled_by
+            buffer_ctx.fillStyle = "white"
+            buffer_ctx.fill()
+            buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)
+            buffer_ctx.stroke()
+            buffer_ctx.lineWidth = prev_width
+            buffer_ctx.fillStyle = prev_fill
+
+
 def get_smudge_data(x: float, y: float) -> ImageData:
     """Get the smudge data around the xy for smudgeing."""
     smudge_size = ctx.lineWidth
@@ -176,10 +200,12 @@ def mouse_tracker(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
     """
     x, y = get_canvas_coords(event)
+
+    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
     if ctx.moving_image:
-        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         return
+    show_action_icon(x, y)
     if not ctx.drawing:
         return
 
@@ -254,16 +280,14 @@ def canvas_click(event: MouseEvent) -> None:
 
     if ctx.moving_image:
         ctx.moving_image = False
-        ctx.globalCompositeOperation = ctx.prev_operation
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        ctx.globalCompositeOperation = ctx.prev_operation
     elif ctx.type == "smooth":
         ctx.beginPath()
         ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
-        if ctx.action == "pen":
+        if ctx.action in ("pen", "eraser"):
             ctx.stroke()
-        elif ctx.action == "eraser":
-            ctx.fill()
     elif ctx.type == "pixel":
         if ctx.action == "pen":
             draw_pixel(x, y)
@@ -279,6 +303,7 @@ def colour_change(_: Event) -> None:
         _ (Event): Change event
     """
     ctx.strokeStyle = window.pen.colour
+    buffer_ctx.strokeStyle = window.pen.colour
 
 
 @when("change", ".width-input")
@@ -289,6 +314,7 @@ def width_change(event: Event) -> None:
         event (Event): Change event
     """
     ctx.lineWidth = int(event.target.getAttribute("aria-valuenow"))
+    buffer_ctx.lineWidth = ctx.lineWidth
 
 
 @when("change", "#action-select")
