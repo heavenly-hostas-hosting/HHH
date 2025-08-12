@@ -6,37 +6,36 @@
 
 from pyodide.ffi import to_js
 from pyscript import when, window, document
-from js import Math, THREE, performance, Object, Image
+from js import Math, THREE, performance, Object, console
 import asyncio
+
+def log(msg):
+    console.log(msg)
+
+output_div = document.createElement('div')
+output_div.id = 'output_div'
+document.body.appendChild(output_div)
 
 
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
-# RENDERER.shadowMap.enabled = False
-# RENDERER.shadowMap.type = THREE.PCFSoftShadowMap
-# RENDERER.shadowMap.needsUpdate = True
+RENDERER.shadowMap.enabled = False
+RENDERER.shadowMap.type = THREE.PCFSoftShadowMap
+RENDERER.shadowMap.needsUpdate = True
 RENDERER.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(RENDERER.domElement)
 
 CAMERA = THREE.PerspectiveCamera.new(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-# cameraRange = 10
-# CAMERA.position.set(0, 0, cameraRange)
+cameraRange = 5
+CAMERA.position.set(0, 0, cameraRange)
 
 # setcolor = "#000000"
 SCENE = THREE.Scene.new()
 # SCENE.background = THREE.Color.new(setcolor)
 # SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
 
-# CAMERA.lookAt(SCENE.position)
-
-# SCENE_GROUP = THREE.Object3D.new()
-# SCENE.add(SCENE_GROUP)
-
-# PARTICULAR_GROUP = THREE.Object3D.new()
-# SCENE_GROUP.add(PARTICULAR_GROUP)
-
-# MODULAR_GROUP = THREE.Object3D.new()
-# SCENE.add(MODULAR_GROUP)
-
+log(CAMERA.position)
+CAMERA.lookAt(SCENE.position)
+log(CAMERA.position)
 
 MOUSE = THREE.Vector2.new()
 
@@ -108,7 +107,6 @@ def create_cubes(mathRandom, modularGroup):
         modularGroup.add(cube)
         i += 1
 
-
 def generateParticle(mathRandom, particularGroup, num, amp=2):
     particle_perms = {"color": "#FFFFFF", "side": THREE.DoubleSide}
     particle_perms = Object.fromEntries(to_js(particle_perms))
@@ -125,7 +123,6 @@ def generateParticle(mathRandom, particularGroup, num, amp=2):
         particular.speedValue = mathRandom(1)
         particularGroup.add(particular)
         i += 1
-
 
 async def main():
     while True:
@@ -170,6 +167,8 @@ def load_image() -> None:
     textureLoader = THREE.TextureLoader.new()
     texture = textureLoader.load('assets/images/test-image.webp')
 
+    texture.onLoad = lambda e: log("texture loaded")
+
     perms = Object.fromEntries(to_js({
         "map": texture,
     }))
@@ -177,37 +176,41 @@ def load_image() -> None:
     geometry = THREE.PlaneGeometry.new(1, 1, 1)
     material = THREE.MeshBasicMaterial.new(perms)
     plane = THREE.Mesh.new(geometry, material)
-    # plane.rotation.set(3.14/2, 0, 0)
+    plane.rotation.x += 1
+    plane.rotation.y += 1
     SCENE.add(plane)
 
-    CAMERA.position.z = 5
+    # CAMERA.position.z = 5
 
     return plane
 
 
-async def animate():
-    while True:
-        plane.rotation.x += 0.1
-        plane.rotation.y += 0.1
+# async def animate():
+#     while True:
+#         plane.rotation.x += 0.1
+#         plane.rotation.y += 0.1
 
-        RENDERER.render(SCENE, CAMERA)
-        await asyncio.sleep(0.1)
+#         log(plane.rotation)
+
+#         RENDERER.render(SCENE, CAMERA)
+#         await asyncio.sleep(1)
+
+async def animate():
+    # plane.rotation.x += 0.1
+    # plane.rotation.y += 0.1
+
+    RENDERER.render(SCENE, CAMERA)
+    log('Rendering scene... 1')
+    await asyncio.sleep(2)
+    RENDERER.render(SCENE, CAMERA)
+    log('Rendering scene... 2')
+
 
 
 # const geometry = new THREE.PlaneGeometry( 1, 1 );
 # const material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
 # const plane = new THREE.Mesh( geometry, material );
 # scene.add( plane );
-
-
-output_div = document.createElement('div')
-output_div.id = 'output_div'
-document.body.appendChild(output_div)
-
-def log(msg):
-    new_p = document.createElement('p')
-    new_p.innerText = msg
-    output_div.appendChild(new_p)
 
 
 log('YEET')
