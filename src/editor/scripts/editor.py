@@ -14,16 +14,19 @@ from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
 
 canvas = document.getElementById("image-canvas")
+buffer = document.getElementById("buffer-canvas")
 
 settings = Object()
 settings.willReadFrequently = True
 
 ctx: CanvasContext = canvas.getContext("2d", settings)
+buffer_ctx: CanvasContext = buffer.getContext("2d", settings)
+
 canvas.style.imageRendering = "pixelated"
 canvas.style.imageRendering = "crisp-edges"
 
-
-ctx.imageSmoothingEnabled = False
+buffer.style.imageRendering = "pixelated"
+buffer.style.imageRendering = "crisp-edges"
 
 # Settings properties of the canvas.
 display_height = window.innerHeight * 0.95  # 95vh
@@ -37,15 +40,35 @@ canvas.style.width = f"{display_width}px"
 canvas.height = display_height * ctx.scaled_by
 canvas.width = display_width * ctx.scaled_by
 
+buffer.style.height = f"{display_height}px"
+buffer.style.width = f"{display_width}px"
+
+buffer.height = display_height * ctx.scaled_by
+buffer.width = display_width * ctx.scaled_by
+
+
+ctx.imageSmoothingEnabled = False
 ctx.strokeStyle = "black"
 ctx.lineWidth = 5
 ctx.lineCap = "round"
 ctx.lineJoin = "round"
 
+# Custom attributes attached so we don't need to use global vars
 ctx.drawing = False
 ctx.action = "pen"
 ctx.type = "smooth"
 ctx.bounding_rect = canvas.getBoundingClientRect()
+ctx.current_img = Image.new()
+ctx.moving_image = False
+ctx.prev_operation = "source-over"
+
+
+buffer_ctx.imageSmoothingEnabled = False
+buffer_ctx.strokeStyle = "black"
+buffer_ctx.lineWidth = 5
+buffer_ctx.lineCap = "round"
+buffer_ctx.lineJoin = "round"
+
 
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
@@ -60,6 +83,30 @@ def draw_pixel(x: float, y: float) -> None:
     """
     ctx.fillStyle = ctx.strokeStyle
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+
+
+def show_action_icon(x: float, y: float) -> None:
+    """Show icon to let user know what the action would look like.
+
+    Args:
+        x (float): X coordinate
+        y (float): Y coordinate
+    """
+    if ctx.type == "smooth":
+        buffer_ctx.beginPath()
+        buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)  # Put a dot here
+        if ctx.action == "pen":
+            buffer_ctx.fill()
+        elif ctx.action == "eraser":
+            prev_width = buffer_ctx.lineWidth
+            prev_fill = buffer_ctx.fillStyle
+            buffer_ctx.lineWidth = ctx.scaled_by
+            buffer_ctx.fillStyle = "white"
+            buffer_ctx.fill()
+            buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)
+            buffer_ctx.stroke()
+            buffer_ctx.lineWidth = prev_width
+            buffer_ctx.fillStyle = prev_fill
 
 
 def get_smudge_data(x: float, y: float) -> ImageData:
@@ -131,10 +178,12 @@ def start_path(event: MouseEvent) -> None:
     """
     if event.button != 0:
         return
+
+    if ctx.moving_image:
+        return
     ctx.drawing = True
 
     x, y = get_canvas_coords(event)
-
     if ctx.action == "smudge":
         update_smudge_data(x, y)
     elif ctx.type == "smooth":
@@ -150,10 +199,15 @@ def mouse_tracker(event: MouseEvent) -> None:
     Args:
         event (MouseEvent): The mouse event
     """
+    x, y = get_canvas_coords(event)
+
+    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if ctx.moving_image:
+        buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        return
+    show_action_icon(x, y)
     if not ctx.drawing:
         return
-
-    x, y = get_canvas_coords(event)
 
     match ctx.type:
         case "smooth":
@@ -223,13 +277,17 @@ def canvas_click(event: MouseEvent) -> None:
     if event.button != 0:
         return
     x, y = get_canvas_coords(event)
-    if ctx.type == "smooth":
+
+    if ctx.moving_image:
+        ctx.moving_image = False
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        ctx.globalCompositeOperation = ctx.prev_operation
+    elif ctx.type == "smooth":
         ctx.beginPath()
         ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
-        if ctx.action == "pen":
+        if ctx.action in ("pen", "eraser"):
             ctx.stroke()
-        elif ctx.action == "eraser":
-            ctx.fill()
     elif ctx.type == "pixel":
         if ctx.action == "pen":
             draw_pixel(x, y)
@@ -245,6 +303,7 @@ def colour_change(_: Event) -> None:
         _ (Event): Change event
     """
     ctx.strokeStyle = window.pen.colour
+    buffer_ctx.strokeStyle = window.pen.colour
 
 
 @when("change", ".width-input")
@@ -255,6 +314,7 @@ def width_change(event: Event) -> None:
         event (Event): Change event
     """
     ctx.lineWidth = int(event.target.getAttribute("aria-valuenow"))
+    buffer_ctx.lineWidth = ctx.lineWidth
 
 
 @when("change", "#action-select")
@@ -330,17 +390,11 @@ def upload_image(e: Event) -> None:
     Args:
         e (Event): Upload event
     """
-    img = Image.new()
-
-    def draw_image(_: Event) -> None:
-        """Draws the image onto the canvas."""
-        prev_operation = ctx.globalCompositeOperation
-        ctx.globalCompositeOperation = "source-over"
-        ctx.drawImage(img, 0, 0)
-        ctx.globalCompositeOperation = prev_operation
-
-    img.onload = draw_image
-    img.src = e.target.src
+    ctx.prev_operation = ctx.globalCompositeOperation
+    ctx.globalCompositeOperation = "source-over"
+    ctx.prev_data = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    ctx.current_img.src = e.target.src
+    ctx.moving_image = True
 
 
 @create_proxy
@@ -350,7 +404,6 @@ def resize(_: Event) -> None:
     Args:
         _ (Event): Resize event
     """
-    window.console.log(ctx.scaled_by)
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
@@ -377,3 +430,5 @@ def resize(_: Event) -> None:
 
 
 window.addEventListener("resize", resize)
+
+ctx.current_img.onload = resize
