@@ -165,7 +165,6 @@ with ui.row().style("display: flex; width: 100%;"):
 
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
-        print(draw_type.value)
         action_options = {
             "pen": "🖊️",
             "eraser": "🧽",

@@ -8,6 +8,7 @@ from js import (  # pyright: ignore[reportMissingImports]
     Object,
     document,
     window,
+    ImageData,
 )
 from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
