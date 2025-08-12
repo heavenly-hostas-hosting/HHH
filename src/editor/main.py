@@ -148,10 +148,15 @@ with ui.row().style("display: flex; width: 100%;"):
         ui.button("Download").props("id='download-button'")
         ui.upload(
             label="Upload file",
+            # The following event is fired in case the image upload is above the canvas.
+            # This would change the getBoundingClientRect() of the canvas.
+            on_begin_upload=lambda: ui.run_javascript("""
+                const event = new Event('resize');
+                window.dispatchEvent(event);
+            """),
+            auto_upload=True,
             on_upload=upload_image,
             on_rejected=lambda _: ui.notify("There was an issue with the upload."),
-        ).classes(
-            "max-w-full",
         ).props("accept='image/*' id='file-input'")
         type_toggle = ui.toggle(
             {"smooth": "✍️", "pixel": "👾"},

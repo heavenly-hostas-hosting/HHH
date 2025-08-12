@@ -23,7 +23,7 @@ class CanvasContext:
     drawing: bool = False
     action: Literal["pen", "eraser", "smudge"] = "pen"
     type: Literal["smooth", "pixel"] = "smooth"
-    #
+    bounding_rect: Any
     last_x: float
     last_y: float
     smudge_data: ImageData

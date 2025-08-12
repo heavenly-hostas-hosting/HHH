@@ -3,12 +3,12 @@ from canvas_ctx import CanvasContext
 from js import (  # pyright: ignore[reportMissingImports]
     Event,
     Image,
+    ImageData,
     Math,
     MouseEvent,
     Object,
     document,
     window,
-    ImageData,
 )
 from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
@@ -204,14 +204,10 @@ def leaves_canvas(event: MouseEvent) -> None:
     """
     if not ctx.drawing:
         return
-    if ctx.type == "smooth":
-        if ctx.action == "smudge":
-            # draw_smudge(event)
-            pass
-        else:  # "pen" or "eraser"
-            x, y = get_canvas_coords(event)
-            ctx.lineTo(x, y)
-            ctx.stroke()
+    if ctx.type == "smooth" and ctx.action != "smudge":  # "pen" or "eraser"
+        x, y = get_canvas_coords(event)
+        ctx.lineTo(x, y)
+        ctx.stroke()
 
     ctx.drawing = False
     ctx.smudge_data = None
