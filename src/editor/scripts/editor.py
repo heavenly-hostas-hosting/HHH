@@ -1,6 +1,8 @@
 # Following imports have the ignore flag as they are not pip installed
+from re import S
 from canvas_ctx import CanvasContext, CanvasSettings
 from js import (  # pyright: ignore[reportMissingImports]
+    ImageData,
     Object,
     Event,
     Image,
@@ -47,6 +49,7 @@ ctx.type = "smooth"
 ctx.rect = canvas.getBoundingClientRect()
 
 PIXEL_SIZE = 8
+SMUDGE_BLEND_FACTOR = 0.5
 
 
 def draw_pixel(x: float, y: float) -> None:
@@ -58,6 +61,49 @@ def draw_pixel(x: float, y: float) -> None:
     """
     ctx.fillStyle = ctx.strokeStyle
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+
+
+def get_smudge_data(x: float, y: float) -> ImageData:
+    """Get the smudge data around the xy for smudgeing."""
+    smudge_size = ctx.lineWidth
+
+    return ctx.getImageData(
+        x - (smudge_size // 2),
+        y - (smudge_size // 2),
+        smudge_size,
+        smudge_size,
+    )
+
+
+def put_smudge_data(x: float, y: float) -> None:
+    """Put the smudge data around the xy for smudgeing."""
+    smudge_size = ctx.lineWidth
+
+    ctx.putImageData(
+        ctx.smudge_data,
+        x - (smudge_size // 2),
+        y - (smudge_size // 2),
+    )
+
+
+def update_smudge_data(x: float, y: float) -> None:
+    """Update the smudge data around the xy for smudgeing."""
+    ctx.smudge_data = get_smudge_data(x, y)
+    ctx.last_x = x
+    ctx.last_y = y
+
+
+def draw_smudge(event: MouseEvent) -> None:
+    """Draws the smudge data on the canvas.
+
+    Args:
+        event (MouseEvent): The javascript mouse event
+    """
+    x, y = get_canvas_coords(event)
+    # draw the pevious smudge data at the current xy.
+    put_smudge_data(x, y)
+
+    update_smudge_data(x, y)
 
 
 def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
@@ -87,7 +133,12 @@ def start_path(event: MouseEvent) -> None:
     if event.button != 0:
         return
     ctx.drawing = True
-    if ctx.type == "smooth":
+
+    x, y = get_canvas_coords(event)
+
+    if ctx.action == "smudge":
+        update_smudge_data(x, y)
+    elif ctx.type == "smooth":
         x, y = get_canvas_coords(event)
         ctx.beginPath()
         ctx.moveTo(x, y)
@@ -102,11 +153,17 @@ def mouse_tracker(event: MouseEvent) -> None:
     """
     if not ctx.drawing:
         return
+
     x, y = get_canvas_coords(event)
+
     match ctx.type:
         case "smooth":
-            ctx.lineTo(x, y)
-            ctx.stroke()
+            if ctx.action == "smudge":
+                draw_smudge(event)
+
+            else:  # this is "pen" or "eraser"
+                ctx.lineTo(x, y)
+                ctx.stroke()
 
         case "pixel":
             if ctx.action == "pen":
@@ -125,6 +182,7 @@ def stop_path(_: MouseEvent) -> None:
     if not ctx.drawing:
         return
     ctx.drawing = False
+    ctx.smudge_data = None
 
 
 @when("mouseout", "#image-canvas")
@@ -137,11 +195,16 @@ def leaves_canvas(event: MouseEvent) -> None:
     if not ctx.drawing:
         return
     if ctx.type == "smooth":
-        x, y = get_canvas_coords(event)
-        ctx.lineTo(x, y)
-        ctx.stroke()
+        if ctx.action == "smudge":
+            # draw_smudge(event)
+            pass
+        else:  # "pen" or "eraser"
+            x, y = get_canvas_coords(event)
+            ctx.lineTo(x, y)
+            ctx.stroke()
 
     ctx.drawing = False
+    ctx.smudge_data = None
 
 
 @when("mousedown", "#image-canvas")
@@ -196,10 +259,13 @@ def action_change(event: Event) -> None:
         event (Event): Change event
     """
     ctx.action = event.target.getAttribute("value")
-    if ctx.action == "pen":
-        ctx.globalCompositeOperation = "source-over"
-    else:
-        ctx.globalCompositeOperation = "destination-out"
+    match ctx.action:
+        case "pen":
+            ctx.globalCompositeOperation = "source-over"
+        case "eraser":
+            ctx.globalCompositeOperation = "destination-out"
+        case "smudge":
+            ctx.globalCompositeOperation = "source-over"
 
 
 @when("change", "#type-select")
@@ -259,7 +325,7 @@ def upload_image(e: Event) -> None:
         e (Event): Upload event
     """
     img = Image.new()
-    img.onload = lambda _: ctx.drawImage(img, 0, 0)
+    img.onload = lambda _: ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
     img.src = e.target.src
 
 

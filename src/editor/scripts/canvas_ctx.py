@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from js import MouseEvent, document  # pyright: ignore[reportMissingImports]
+from js import ImageData, MouseEvent, document  # pyright: ignore[reportMissingImports]
 
 
 class CanvasSettings:
@@ -16,8 +16,12 @@ class CanvasContext:
     # Cutsom attributes
     scale: int = 2  # Better resolution
     drawing: bool = False
-    action: Literal["pen", "eraser"] = "pen"
+    action: Literal["pen", "eraser", "smudge"] = "pen"
     type: Literal["smooth", "pixel"] = "smooth"
+    #
+    last_x: float
+    last_y: float
+    smudge_data: ImageData
 
     # Builtin attributes
     canvas: Any

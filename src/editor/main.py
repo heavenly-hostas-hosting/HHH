@@ -91,7 +91,8 @@ def upload_image(e: UploadEventArguments) -> None:
     """)
 
 
-def switch_action(e: ValueChangeEventArguments):
+def switch_action(e: ValueChangeEventArguments) -> None:
+    """Javascript to change the action to and from pen / eraser."""
     ui.run_javascript(f"""
     const event = new Event('change');
     const actionSelect = document.querySelector("#action-select");
@@ -116,7 +117,7 @@ with ui.row().style("display: flex; width: 100%;"):
         ).classes(
             "max-w-full",
         ).props("accept='image/*' id='file-input'")
-        ui.toggle(
+        draw_type = ui.toggle(
             {"smooth": "✍️", "pixel": "👾"},
             value="smooth",
             on_change=lambda e: reset_confirmation(mode_value=e.value),
@@ -128,8 +129,15 @@ with ui.row().style("display: flex; width: 100%;"):
 
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
-        ui.toggle(
-            {"pen": "🖊️", "eraser": "🧽"},
+        print(draw_type.value)
+        action_options = {
+            "pen": "🖊️",
+            "eraser": "🧽",
+            "smudge": "💨",
+        }
+
+        action_toggle = ui.toggle(
+            action_options,
             value="pen",
             on_change=switch_action,
         ).props(
