@@ -1,13 +1,11 @@
 # Following imports have the ignore flag as they are not pip installed
-from re import S
-from canvas_ctx import CanvasContext, CanvasSettings
+from canvas_ctx import CanvasContext
 from js import (  # pyright: ignore[reportMissingImports]
-    ImageData,
-    Object,
     Event,
     Image,
     Math,
     MouseEvent,
+    Object,
     document,
     window,
 )
@@ -30,13 +28,13 @@ ctx.imageSmoothingEnabled = False
 display_height = window.innerHeight * 0.95  # 95vh
 display_width = display_height * (2**0.5)  # Same ratio as an A4 sheet of paper
 
-ctx.scale = 2  # Better resolution
+ctx.scaled_by = 2  # Better resolution
 
 canvas.style.height = f"{display_height}px"
 canvas.style.width = f"{display_width}px"
 
-canvas.height = display_height * ctx.scale
-canvas.width = display_width * ctx.scale
+canvas.height = display_height * ctx.scaled_by
+canvas.width = display_width * ctx.scaled_by
 
 ctx.strokeStyle = "black"
 ctx.lineWidth = 5
@@ -46,7 +44,7 @@ ctx.lineJoin = "round"
 ctx.drawing = False
 ctx.action = "pen"
 ctx.type = "smooth"
-ctx.rect = canvas.getBoundingClientRect()
+ctx.bounding_rect = canvas.getBoundingClientRect()
 
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
@@ -115,8 +113,8 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
     Returns:
         tuple[float, float]: The x and y coordinates
     """
-    x = (event.pageX - ctx.rect.left) * ctx.scale
-    y = (event.pageY - ctx.rect.top) * ctx.scale
+    x = (event.pageX - ctx.bounding_rect.left) * ctx.scaled_by
+    y = (event.pageY - ctx.bounding_rect.top) * ctx.scaled_by
     if ctx.type == "pixel":
         x = (int(x) + 5) // 10 * 10
         y = (int(y) + 5) // 10 * 10
@@ -172,17 +170,28 @@ def mouse_tracker(event: MouseEvent) -> None:
                 ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
-@when("mouseup", "#image-canvas")
+@when("mouseup", "body")
 def stop_path(_: MouseEvent) -> None:
     """Stop drawing path.
 
     Args:
         event (MouseEvent): The mouse event
     """
-    if not ctx.drawing:
-        return
-    ctx.drawing = False
-    ctx.smudge_data = None
+    if ctx.drawing:
+        ctx.drawing = False
+
+
+@when("mouseenter", "#image-canvas")
+def start_reentry_path(event: MouseEvent) -> None:
+    """Start a new path from the edge upon canvas entry.
+
+    Args:
+        event (MouseEvent): Mouse event
+    """
+    if ctx.drawing:
+        x, y = get_canvas_coords(event)
+        ctx.beginPath()
+        ctx.moveTo(x, y)
 
 
 @when("mouseout", "#image-canvas")
@@ -278,10 +287,10 @@ def type_change(event: Event) -> None:
     ctx.type = event.target.getAttribute("value")
     if ctx.type == "smooth":
         ctx.imageSmoothingEnabled = True
-        ctx.scale = 2
+        ctx.scaled_by = 2
     elif ctx.type == "pixel":
         ctx.imageSmoothingEnabled = False
-        ctx.scale = 0.5
+        ctx.scaled_by = 0.5
     resize(event)
 
 
@@ -325,7 +334,15 @@ def upload_image(e: Event) -> None:
         e (Event): Upload event
     """
     img = Image.new()
-    img.onload = lambda _: ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+    def draw_image(_: Event) -> None:
+        """Draws the image onto the canvas."""
+        prev_operation = ctx.globalCompositeOperation
+        ctx.globalCompositeOperation = "source-over"
+        ctx.drawImage(img, 0, 0)
+        ctx.globalCompositeOperation = prev_operation
+
+    img.onload = draw_image
     img.src = e.target.src
 
 
@@ -336,7 +353,7 @@ def resize(_: Event) -> None:
     Args:
         _ (Event): Resize event
     """
-    window.console.log(ctx.scale)
+    window.console.log(ctx.scaled_by)
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
@@ -348,10 +365,10 @@ def resize(_: Event) -> None:
     canvas.style.height = f"{display_height}px"
     canvas.style.width = f"{display_width}px"
 
-    canvas.height = display_height * ctx.scale
-    canvas.width = display_width * ctx.scale
+    canvas.height = display_height * ctx.scaled_by
+    canvas.width = display_width * ctx.scaled_by
 
-    ctx.rect = canvas.getBoundingClientRect()
+    ctx.bounding_rect = canvas.getBoundingClientRect()
     ctx.putImageData(data, 0, 0)
 
     ctx.lineWidth = line_width
