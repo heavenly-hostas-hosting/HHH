@@ -147,6 +147,7 @@ def upload_image(e: UploadEventArguments) -> None:
         event = new Event('resize');
         window.dispatchEvent(event);
     """)
+    e.sender.reset()
 
 
 def switch_action(e: ValueChangeEventArguments) -> None:
