@@ -14,16 +14,19 @@ from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
 from pyscript import when  # pyright: ignore[reportMissingImports]
 
 canvas = document.getElementById("image-canvas")
+buffer = document.getElementById("buffer-canvas")
 
 settings = Object()
 settings.willReadFrequently = True
 
 ctx: CanvasContext = canvas.getContext("2d", settings)
+buffer_ctx: CanvasContext = buffer.getContext("2d", settings)
+
 canvas.style.imageRendering = "pixelated"
 canvas.style.imageRendering = "crisp-edges"
 
-
-ctx.imageSmoothingEnabled = False
+buffer.style.imageRendering = "pixelated"
+buffer.style.imageRendering = "crisp-edges"
 
 # Settings properties of the canvas.
 display_height = window.innerHeight * 0.95  # 95vh
@@ -37,6 +40,14 @@ canvas.style.width = f"{display_width}px"
 canvas.height = display_height * ctx.scaled_by
 canvas.width = display_width * ctx.scaled_by
 
+buffer.style.height = f"{display_height}px"
+buffer.style.width = f"{display_width}px"
+
+buffer.height = display_height * ctx.scaled_by
+buffer.width = display_width * ctx.scaled_by
+
+
+ctx.imageSmoothingEnabled = False
 ctx.strokeStyle = "black"
 ctx.lineWidth = 5
 ctx.lineCap = "round"
@@ -50,6 +61,14 @@ ctx.bounding_rect = canvas.getBoundingClientRect()
 ctx.current_img = Image.new()
 ctx.moving_image = False
 ctx.prev_operation = "source-over"
+
+
+buffer_ctx.imageSmoothingEnabled = False
+buffer_ctx.strokeStyle = "black"
+buffer_ctx.lineWidth = 5
+buffer_ctx.lineCap = "round"
+buffer_ctx.lineJoin = "round"
+
 
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
@@ -158,9 +177,8 @@ def mouse_tracker(event: MouseEvent) -> None:
     """
     x, y = get_canvas_coords(event)
     if ctx.moving_image:
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.putImageData(ctx.prev_data, 0, 0)
-        ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+        buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         return
     if not ctx.drawing:
         return
@@ -237,6 +255,8 @@ def canvas_click(event: MouseEvent) -> None:
     if ctx.moving_image:
         ctx.moving_image = False
         ctx.globalCompositeOperation = ctx.prev_operation
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
     elif ctx.type == "smooth":
         ctx.beginPath()
         ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
