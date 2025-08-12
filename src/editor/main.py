@@ -4,7 +4,7 @@ import pathlib
 import random
 
 from nicegui import app, ui
-from nicegui.events import UploadEventArguments
+from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
@@ -50,6 +50,42 @@ def reset_confirmation(*, mode_value: bool = False) -> None:
     dialog.open()
 
 
+# I really don't want to do this but I don't know how else to achieve it
+global_vars = {
+    "type_programatically_changed": False,
+}
+
+
+def revert_type() -> None:
+    """Revert the type change when cancel is clicked."""
+    global_vars["type_programatically_changed"] = True
+    type_toggle.set_visibility(False)
+    type_toggle.value = "smooth" if type_toggle.value == "pixel" else "pixel"
+    type_toggle.update()
+    type_toggle.set_visibility(True)
+    global_vars["type_programatically_changed"] = False
+
+
+def change_type(*, mode_value: bool = False) -> None:
+    """Prompt user to reset canvas."""
+    if global_vars["type_programatically_changed"]:
+        return
+    with ui.dialog() as dialog, ui.card():
+        ui.label("Are you sure you want to change the drawing mode? This will clear the canvas.")
+        with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
+            ui.button(
+                "Cancel",
+                on_click=lambda: (
+                    dialog.close(),
+                    revert_type(),
+                ),
+            )
+            ui.button("Change", on_click=lambda: (do_reset(mode_value=mode_value), dialog.close())).props(
+                "color='red'",
+            )
+    dialog.open()
+
+
 def reset() -> None:
     """Reset canvas."""
     ui.run_javascript("""
@@ -91,6 +127,16 @@ def upload_image(e: UploadEventArguments) -> None:
     """)
 
 
+def switch_action(e: ValueChangeEventArguments) -> None:
+    """Fire switch action event."""
+    ui.run_javascript(f"""
+    const event = new Event('change');
+    const actionSelect = document.querySelector("#action-select");
+    actionSelect.setAttribute("value", "{e.value}");
+    actionSelect.dispatchEvent(event);
+    """)
+
+
 ui.element("img").props("id='file-upload'").style("display: none;")
 
 with ui.row().style("display: flex; width: 100%;"):
@@ -102,15 +148,20 @@ with ui.row().style("display: flex; width: 100%;"):
         ui.button("Download").props("id='download-button'")
         ui.upload(
             label="Upload file",
+            # The following event is fired in case the image upload is above the canvas.
+            # This would change the getBoundingClientRect() of the canvas.
+            on_begin_upload=lambda: ui.run_javascript("""
+                const event = new Event('resize');
+                window.dispatchEvent(event);
+            """),
+            auto_upload=True,
             on_upload=upload_image,
             on_rejected=lambda _: ui.notify("There was an issue with the upload."),
-        ).classes(
-            "max-w-full",
         ).props("accept='image/*' id='file-input'")
-        ui.toggle(
+        type_toggle = ui.toggle(
             {"smooth": "✍️", "pixel": "👾"},
             value="smooth",
-            on_change=lambda e: reset_confirmation(mode_value=e.value),
+            on_change=lambda e: change_type(mode_value=e.value),
         ).props("id='type-select'")
 
     ui.element("canvas").props("id='image-canvas'").style(
@@ -119,7 +170,17 @@ with ui.row().style("display: flex; width: 100%;"):
 
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
-        ui.toggle({"pen": "🖊️", "eraser": "🧽"}, value="pen", on_change=lambda _: reset_confirmation()).props(
+        action_options = {
+            "pen": "🖊️",
+            "eraser": "🧽",
+            "smudge": "💨",
+        }
+
+        action_toggle = ui.toggle(
+            action_options,
+            value="pen",
+            on_change=switch_action,
+        ).props(
             "id='action-select'",
         )
         ui.separator().classes("w-full")
@@ -145,7 +206,12 @@ with ui.row().style("display: flex; width: 100%;"):
         width_input.bind_value(width_slider)
 
 ui.add_body_html("""
-    <script type="py" src="/scripts/editor.py" defer></script>
+    <py-config>
+        [[fetch]]
+        from = "/scripts/"
+        files = ["canvas_ctx.py", "editor.py"]
+    </py-config>
+    <script type="py" src="/scripts/editor.py"></script>
 """)
 
 ui.run()

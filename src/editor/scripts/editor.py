@@ -1,7 +1,9 @@
 # Following imports have the ignore flag as they are not pip installed
+from canvas_ctx import CanvasContext
 from js import (  # pyright: ignore[reportMissingImports]
     Event,
     Image,
+    ImageData,
     Math,
     MouseEvent,
     Object,
@@ -13,25 +15,27 @@ from pyscript import when  # pyright: ignore[reportMissingImports]
 
 canvas = document.getElementById("image-canvas")
 
-canvas.style.imageRendering = "pixelated"
-canvas.style.imageRendering = "crisp-edges"
-
 settings = Object()
 settings.willReadFrequently = True
 
-ctx = canvas.getContext("2d", settings)
+ctx: CanvasContext = canvas.getContext("2d", settings)
+canvas.style.imageRendering = "pixelated"
+canvas.style.imageRendering = "crisp-edges"
+
+
 ctx.imageSmoothingEnabled = False
 
+# Settings properties of the canvas.
 display_height = window.innerHeight * 0.95  # 95vh
 display_width = display_height * (2**0.5)  # Same ratio as an A4 sheet of paper
 
-ctx.scale = 2  # Better resolution
+ctx.scaled_by = 2  # Better resolution
 
 canvas.style.height = f"{display_height}px"
 canvas.style.width = f"{display_width}px"
 
-canvas.height = display_height * ctx.scale
-canvas.width = display_width * ctx.scale
+canvas.height = display_height * ctx.scaled_by
+canvas.width = display_width * ctx.scaled_by
 
 ctx.strokeStyle = "black"
 ctx.lineWidth = 5
@@ -41,9 +45,10 @@ ctx.lineJoin = "round"
 ctx.drawing = False
 ctx.action = "pen"
 ctx.type = "smooth"
-ctx.rect = canvas.getBoundingClientRect()
+ctx.bounding_rect = canvas.getBoundingClientRect()
 
 PIXEL_SIZE = 8
+SMUDGE_BLEND_FACTOR = 0.5
 
 
 def draw_pixel(x: float, y: float) -> None:
@@ -52,10 +57,52 @@ def draw_pixel(x: float, y: float) -> None:
     Args:
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     ctx.fillStyle = ctx.strokeStyle
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+
+
+def get_smudge_data(x: float, y: float) -> ImageData:
+    """Get the smudge data around the xy for smudgeing."""
+    smudge_size = ctx.lineWidth
+
+    return ctx.getImageData(
+        x - (smudge_size // 2),
+        y - (smudge_size // 2),
+        smudge_size,
+        smudge_size,
+    )
+
+
+def put_smudge_data(x: float, y: float) -> None:
+    """Put the smudge data around the xy for smudgeing."""
+    smudge_size = ctx.lineWidth
+
+    ctx.putImageData(
+        ctx.smudge_data,
+        x - (smudge_size // 2),
+        y - (smudge_size // 2),
+    )
+
+
+def update_smudge_data(x: float, y: float) -> None:
+    """Update the smudge data around the xy for smudgeing."""
+    ctx.smudge_data = get_smudge_data(x, y)
+    ctx.last_x = x
+    ctx.last_y = y
+
+
+def draw_smudge(event: MouseEvent) -> None:
+    """Draws the smudge data on the canvas.
+
+    Args:
+        event (MouseEvent): The javascript mouse event
+    """
+    x, y = get_canvas_coords(event)
+    # draw the pevious smudge data at the current xy.
+    put_smudge_data(x, y)
+
+    update_smudge_data(x, y)
 
 
 def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
@@ -66,10 +113,9 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
 
     Returns:
         tuple[float, float]: The x and y coordinates
-
     """
-    x = (event.pageX - ctx.rect.left) * ctx.scale
-    y = (event.pageY - ctx.rect.top) * ctx.scale
+    x = (event.pageX - ctx.bounding_rect.left) * ctx.scaled_by
+    y = (event.pageY - ctx.bounding_rect.top) * ctx.scaled_by
     if ctx.type == "pixel":
         x = (int(x) + 5) // 10 * 10
         y = (int(y) + 5) // 10 * 10
@@ -82,12 +128,16 @@ def start_path(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if event.button != 0:
         return
     ctx.drawing = True
-    if ctx.type == "smooth":
+
+    x, y = get_canvas_coords(event)
+
+    if ctx.action == "smudge":
+        update_smudge_data(x, y)
+    elif ctx.type == "smooth":
         x, y = get_canvas_coords(event)
         ctx.beginPath()
         ctx.moveTo(x, y)
@@ -99,32 +149,50 @@ def mouse_tracker(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if not ctx.drawing:
         return
+
     x, y = get_canvas_coords(event)
-    if ctx.type == "smooth":
-        ctx.lineTo(x, y)
-        ctx.stroke()
-    elif ctx.type == "pixel":
-        if ctx.action == "pen":
-            draw_pixel(x, y)
-        elif ctx.action == "eraser":
-            ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+
+    match ctx.type:
+        case "smooth":
+            if ctx.action == "smudge":
+                draw_smudge(event)
+
+            else:  # this is "pen" or "eraser"
+                ctx.lineTo(x, y)
+                ctx.stroke()
+
+        case "pixel":
+            if ctx.action == "pen":
+                draw_pixel(x, y)
+            elif ctx.action == "eraser":
+                ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
-@when("mouseup", "#image-canvas")
+@when("mouseup", "body")
 def stop_path(_: MouseEvent) -> None:
     """Stop drawing path.
 
     Args:
         event (MouseEvent): The mouse event
-
     """
-    if not ctx.drawing:
-        return
-    ctx.drawing = False
+    if ctx.drawing:
+        ctx.drawing = False
+
+
+@when("mouseenter", "#image-canvas")
+def start_reentry_path(event: MouseEvent) -> None:
+    """Start a new path from the edge upon canvas entry.
+
+    Args:
+        event (MouseEvent): Mouse event
+    """
+    if ctx.drawing:
+        x, y = get_canvas_coords(event)
+        ctx.beginPath()
+        ctx.moveTo(x, y)
 
 
 @when("mouseout", "#image-canvas")
@@ -133,16 +201,16 @@ def leaves_canvas(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if not ctx.drawing:
         return
-    if ctx.type == "smooth":
+    if ctx.type == "smooth" and ctx.action != "smudge":  # "pen" or "eraser"
         x, y = get_canvas_coords(event)
         ctx.lineTo(x, y)
         ctx.stroke()
 
     ctx.drawing = False
+    ctx.smudge_data = None
 
 
 @when("mousedown", "#image-canvas")
@@ -151,7 +219,6 @@ def canvas_click(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if event.button != 0:
         return
@@ -176,7 +243,6 @@ def colour_change(_: Event) -> None:
 
     Args:
         _ (Event): Change event
-
     """
     ctx.strokeStyle = window.pen.colour
 
@@ -187,24 +253,25 @@ def width_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
-
     """
     ctx.lineWidth = int(event.target.getAttribute("aria-valuenow"))
 
 
 @when("change", "#action-select")
 def action_change(event: Event) -> None:
-    """Handle action change.
+    """Handle action change from `pen` to `eraser` or vice versa.
 
     Args:
         event (Event): Change event
-
     """
     ctx.action = event.target.getAttribute("value")
-    if ctx.action == "pen":
-        ctx.globalCompositeOperation = "source-over"
-    else:
-        ctx.globalCompositeOperation = "destination-out"
+    match ctx.action:
+        case "pen":
+            ctx.globalCompositeOperation = "source-over"
+        case "eraser":
+            ctx.globalCompositeOperation = "destination-out"
+        case "smudge":
+            ctx.globalCompositeOperation = "source-over"
 
 
 @when("change", "#type-select")
@@ -213,15 +280,14 @@ def type_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
-
     """
     ctx.type = event.target.getAttribute("value")
     if ctx.type == "smooth":
         ctx.imageSmoothingEnabled = True
-        ctx.scale = 2
+        ctx.scaled_by = 2
     elif ctx.type == "pixel":
         ctx.imageSmoothingEnabled = False
-        ctx.scale = 0.5
+        ctx.scaled_by = 0.5
     resize(event)
 
 
@@ -231,7 +297,6 @@ def reset_board(_: Event) -> None:
 
     Args:
         _ (Event): Reset event
-
     """
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
@@ -250,7 +315,6 @@ def download_image(_: Event) -> None:
 
     Args:
         _ (Event): Click event
-
     """
     link = document.createElement("a")
     link.download = "download.avif"
@@ -265,10 +329,17 @@ def upload_image(e: Event) -> None:
 
     Args:
         e (Event): Upload event
-
     """
     img = Image.new()
-    img.onload = lambda _: ctx.drawImage(img, 0, 0)
+
+    def draw_image(_: Event) -> None:
+        """Draws the image onto the canvas."""
+        prev_operation = ctx.globalCompositeOperation
+        ctx.globalCompositeOperation = "source-over"
+        ctx.drawImage(img, 0, 0)
+        ctx.globalCompositeOperation = prev_operation
+
+    img.onload = draw_image
     img.src = e.target.src
 
 
@@ -278,9 +349,8 @@ def resize(_: Event) -> None:
 
     Args:
         _ (Event): Resize event
-
     """
-    window.console.log(ctx.scale)
+    window.console.log(ctx.scaled_by)
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
@@ -292,10 +362,10 @@ def resize(_: Event) -> None:
     canvas.style.height = f"{display_height}px"
     canvas.style.width = f"{display_width}px"
 
-    canvas.height = display_height * ctx.scale
-    canvas.width = display_width * ctx.scale
+    canvas.height = display_height * ctx.scaled_by
+    canvas.width = display_width * ctx.scaled_by
 
-    ctx.rect = canvas.getBoundingClientRect()
+    ctx.bounding_rect = canvas.getBoundingClientRect()
     ctx.putImageData(data, 0, 0)
 
     ctx.lineWidth = line_width
