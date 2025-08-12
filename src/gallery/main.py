@@ -4,10 +4,14 @@
 ## DOCS
 ## https://threejs.org/docs/
 
-from pyodide.ffi import create_proxy, to_js
+from pyodide.ffi import create_proxy
 from pyscript import when, window, document
-from js import Math, THREE, performance, Object, GLTFLoader
+from js import Math, THREE, GLTFLoader, PointerLockControls
+
+from collections import defaultdict
+from enum import Enum
 import asyncio
+
 
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
 document.body.appendChild(RENDERER.domElement)
@@ -17,22 +21,122 @@ RENDERER.shadowMap.type = THREE.PCFSoftShadowMap
 RENDERER.shadowMap.needsUpdate = True
 RENDERER.setSize(window.innerWidth, window.innerHeight)
 
-CAMERA = THREE.PerspectiveCamera.new(35, window.innerWidth / window.innerHeight, 1, 500)
-cameraRange = 3
-CAMERA.position.set(0, 0, cameraRange)
+CAMERA = THREE.PerspectiveCamera.new(53, window.innerWidth / window.innerHeight, 0.01, 500)
+CAMERA.position.set(3, 1, 3.5)
+CAMERA.rotation.set(0, 0.4, 0)
 
 setcolor = "#000000"
 SCENE = THREE.Scene.new()
 SCENE.background = THREE.Color.new(setcolor)
 # SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
 
-CAMERA.lookAt(SCENE.position)
+# CAMERA.lookAt(SCENE.position)
 
 MODULAR_GROUP = THREE.Object3D.new()
 SCENE.add(MODULAR_GROUP)
 
 
 MOUSE = THREE.Vector2.new()
+
+CONTROLS = PointerLockControls.new(CAMERA, document.body)
+document.getElementById("instructions").addEventListener("click", create_proxy(CONTROLS.lock))
+CONTROLS.addEventListener(
+    "lock",
+    create_proxy(
+        lambda x: setattr(
+            document.getElementById("instructions").style,
+            "display",
+            "none",
+        ),
+    ),
+)
+CONTROLS.addEventListener(
+    "unlock",
+    create_proxy(
+        lambda x: setattr(
+            document.getElementById("instructions").style,
+            "display",
+            "",
+        ),
+    ),
+)
+
+
+INPUTS = Enum("INPUTS", ["FORW", "LEFT", "RIGHT", "BACK", "UP", "DOWN", "RUN"])
+KEY_MAPPINGS: dict[INPUTS, set[str]] = {
+    INPUTS.FORW: {"KeyW", "KeyK", "ArrowUp"},
+    INPUTS.LEFT: {"KeyH", "KeyA", "ArrowLeft"},
+    INPUTS.RIGHT: {"KeyL", "KeyD", "ArrowRight"},
+    INPUTS.BACK: {"KeyJ", "KeyS", "ArrowDown"},
+    #
+    INPUTS.UP: {"Space"},
+    INPUTS.DOWN: {"ShiftLeft", "ShiftRight"},
+    #
+    INPUTS.RUN: {"KeyZ"},
+}
+KEY_STATES: dict[str, bool] = defaultdict(bool)
+document.addEventListener("keydown", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, True)))
+document.addEventListener("keyup", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, False)))
+
+RUN_STATE = False
+
+
+def toggle_run(event):
+    global RUN_STATE
+    if event.code in KEY_MAPPINGS[INPUTS.RUN]:
+        RUN_STATE = not RUN_STATE
+
+
+document.addEventListener("keydown", create_proxy(toggle_run))
+
+VELOCITY = THREE.Vector3.new()
+
+
+def move_character(delta_time: float):
+    pressed_keys = {k for k, v in KEY_MAPPINGS.items() if any(KEY_STATES[i] for i in v)}
+    damping = 7
+    if RUN_STATE:
+        acceleration = 25
+        max_speed = 50
+
+        CAMERA.fov = min(CAMERA.fov + 60 * delta_time, 60)
+    else:
+        acceleration = 10
+        max_speed = 20
+
+        CAMERA.fov = max(CAMERA.fov - 60 * delta_time, 53)
+    CAMERA.updateProjectionMatrix()
+
+    move = THREE.Vector3.new()
+    if INPUTS.FORW in pressed_keys:
+        move.z -= 1
+    if INPUTS.BACK in pressed_keys:
+        move.z += 1
+
+    if INPUTS.LEFT in pressed_keys:
+        move.x -= 1
+    if INPUTS.RIGHT in pressed_keys:
+        move.x += 1
+
+    if INPUTS.UP in pressed_keys:
+        move.y += 1
+    if INPUTS.DOWN in pressed_keys:
+        move.y -= 1
+
+    if move.length() > 0:
+        q = CAMERA.quaternion
+        yaw = Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z))
+        yaw_q = THREE.Quaternion.new()
+        yaw_q.setFromAxisAngle(THREE.Vector3.new(0, 1, 0), yaw)
+
+        move.applyQuaternion(yaw_q).normalize()
+        VELOCITY.addScaledVector(move, acceleration * delta_time)
+
+        if VELOCITY.length() > max_speed:
+            VELOCITY.setLength(max_speed)
+
+    VELOCITY.multiplyScalar(1 - min(damping * delta_time, 1))
+    CAMERA.position.addScaledVector(VELOCITY, delta_time)
 
 
 @when("mousemove", "body")
@@ -93,9 +197,9 @@ def load_gallery():
         obj.rotation.y = 0
         obj.rotation.z = 0
 
-        obj.scale.x = 0.25
-        obj.scale.y = 0.25
-        obj.scale.z = 0.25
+        obj.scale.x = 1
+        obj.scale.y = 1
+        obj.scale.z = 1
 
         # Backface culling
         for v in obj.children[0].children:
@@ -120,11 +224,9 @@ def load_gallery():
 
 
 async def main():
+    clock = THREE.Clock.new()
     while True:
-        uSpeed = 0.1
-        MODULAR_GROUP.rotation.y -= ((MOUSE.x * 4) + MODULAR_GROUP.rotation.y) * uSpeed
-        MODULAR_GROUP.rotation.x -= ((-MOUSE.y * 4) + MODULAR_GROUP.rotation.x) * uSpeed
-
+        move_character(clock.getDelta())
         RENDERER.render(SCENE, CAMERA)
         await asyncio.sleep(0.02)
 

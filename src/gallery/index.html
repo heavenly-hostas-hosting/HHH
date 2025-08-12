@@ -16,7 +16,9 @@
         {
           "imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/"
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/",
+            "three/controls/": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/controls/"
+
           }
         }
         </script>
@@ -25,13 +27,25 @@
         <script type="module">
             import * as THREE from 'three';
             import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+            import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js'
 
             window.THREE = THREE;
             window.GLTFLoader = GLTFLoader;
+            window.PointerLockControls = PointerLockControls;
+          
         </script>
         <!-- for splashscreen -->
         <style>
             #loading { outline: none; border: none; background: transparent }
+            #instructions {
+              position: absolute;
+              top: 50%;
+              width: 100%;
+              text-align: center;
+              color: white;
+              font-size: 24px;
+              font-family: sans-serif;
+            }
         </style>
         <script type="module">
             const loading = document.getElementById('loading');
@@ -63,7 +77,7 @@
                 <div class="col"></div>
             </div>
         </div>
-
+        <div id="instructions">Click to look around!</div>
         <script type="py" src="./main.py" config="./pyscript.toml"></script>
 
     </body>
