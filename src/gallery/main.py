@@ -1,42 +1,41 @@
 ## PLACEHOLDER, TAKEN FROM:
-## https://pyscript.com/@examples/webgl-icosahedron/latest
+## https:#pyscript.com/@examples/webgl-icosahedron/latest
 
 ## DOCS
-## https://threejs.org/docs/
+## https:#threejs.org/docs/
 
 from pyodide.ffi import to_js
 from pyscript import when, window, document
-from js import Math, THREE, performance, Object
+from js import Math, THREE, performance, Object, Image
 import asyncio
 
 
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
-document.body.appendChild(RENDERER.domElement)
-RENDERER.setSize(1000, 1000)
-RENDERER.shadowMap.enabled = False
-RENDERER.shadowMap.type = THREE.PCFSoftShadowMap
-RENDERER.shadowMap.needsUpdate = True
+# RENDERER.shadowMap.enabled = False
+# RENDERER.shadowMap.type = THREE.PCFSoftShadowMap
+# RENDERER.shadowMap.needsUpdate = True
 RENDERER.setSize(window.innerWidth, window.innerHeight)
+document.body.appendChild(RENDERER.domElement)
 
-CAMERA = THREE.PerspectiveCamera.new(35, window.innerWidth / window.innerHeight, 1, 500)
-cameraRange = 3
-CAMERA.position.set(0, 0, cameraRange)
+CAMERA = THREE.PerspectiveCamera.new(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+# cameraRange = 10
+# CAMERA.position.set(0, 0, cameraRange)
 
-setcolor = "#000000"
+# setcolor = "#000000"
 SCENE = THREE.Scene.new()
-SCENE.background = THREE.Color.new(setcolor)
-SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
+# SCENE.background = THREE.Color.new(setcolor)
+# SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
 
-CAMERA.lookAt(SCENE.position)
+# CAMERA.lookAt(SCENE.position)
 
-SCENE_GROUP = THREE.Object3D.new()
-SCENE.add(SCENE_GROUP)
+# SCENE_GROUP = THREE.Object3D.new()
+# SCENE.add(SCENE_GROUP)
 
-PARTICULAR_GROUP = THREE.Object3D.new()
-SCENE_GROUP.add(PARTICULAR_GROUP)
+# PARTICULAR_GROUP = THREE.Object3D.new()
+# SCENE_GROUP.add(PARTICULAR_GROUP)
 
-MODULAR_GROUP = THREE.Object3D.new()
-SCENE.add(MODULAR_GROUP)
+# MODULAR_GROUP = THREE.Object3D.new()
+# SCENE.add(MODULAR_GROUP)
 
 
 MOUSE = THREE.Vector2.new()
@@ -52,7 +51,7 @@ def mathRandom(num=1):
     setNumber = -Math.random() * num + Math.random() * num
     return setNumber
 
-def genearate_lights()->None:
+def generate_lights()->None:
     ambientLight = THREE.AmbientLight.new(0xFFFFFF, 0.1)
     SCENE.add(ambientLight)
 
@@ -167,8 +166,61 @@ async def main():
         await asyncio.sleep(0.02)
 
 
+def load_image() -> None:
+    textureLoader = THREE.TextureLoader.new()
+    texture = textureLoader.load('assets/images/test-image.webp')
+
+    perms = Object.fromEntries(to_js({
+        "map": texture,
+    }))
+    
+    geometry = THREE.PlaneGeometry.new(1, 1, 1)
+    material = THREE.MeshBasicMaterial.new(perms)
+    plane = THREE.Mesh.new(geometry, material)
+    # plane.rotation.set(3.14/2, 0, 0)
+    SCENE.add(plane)
+
+    CAMERA.position.z = 5
+
+    return plane
+
+
+async def animate():
+    while True:
+        plane.rotation.x += 0.1
+        plane.rotation.y += 0.1
+
+        RENDERER.render(SCENE, CAMERA)
+        await asyncio.sleep(0.1)
+
+
+# const geometry = new THREE.PlaneGeometry( 1, 1 );
+# const material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+# const plane = new THREE.Mesh( geometry, material );
+# scene.add( plane );
+
+
+output_div = document.createElement('div')
+output_div.id = 'output_div'
+document.body.appendChild(output_div)
+
+def log(msg):
+    new_p = document.createElement('p')
+    new_p.innerText = msg
+    output_div.appendChild(new_p)
+
+
+log('YEET')
+
 if __name__ == "__main__":
-    generate_lights()
-    create_cubes(mathRandom, MODULAR_GROUP)
-    generateParticle(mathRandom, PARTICULAR_GROUP, 200, 2)
-    asyncio.ensure_future(main())
+    log('YEET 2')
+    # generate_lights()
+    # create_cubes(mathRandom, MODULAR_GROUP)
+    # generateParticle(mathRandom, PARTICULAR_GROUP, 200, 2)
+    # asyncio.ensure_future(main())
+
+    plane = load_image()
+    asyncio.ensure_future(animate())
+    # RENDERER.render(SCENE, CAMERA)
+    # plane.rotation.x += 1
+    # RENDERER.render(SCENE, CAMERA)
