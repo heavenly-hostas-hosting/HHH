@@ -66,6 +66,20 @@ def revert_type() -> None:
     global_vars["type_programatically_changed"] = False
 
 
+def handle_type_change(*, mode_value: bool) -> None:
+    """Handle type change."""
+    do_reset(mode_value=mode_value)
+    action_toggle.set_value("pen")
+    if type_toggle.value == "smooth":
+        width_input.enable()
+        width_slider.enable()
+        file_uploader.enable()
+    elif type_toggle.value == "pixel":
+        width_input.disable()
+        width_slider.disable()
+        file_uploader.disable()
+
+
 def change_type(*, mode_value: bool = False) -> None:
     """Prompt user to reset canvas."""
     if global_vars["type_programatically_changed"]:
@@ -80,7 +94,10 @@ def change_type(*, mode_value: bool = False) -> None:
                     revert_type(),
                 ),
             )
-            ui.button("Change", on_click=lambda: (do_reset(mode_value=mode_value), dialog.close())).props(
+            ui.button(
+                "Change",
+                on_click=lambda: (dialog.close(), handle_type_change(mode_value=mode_value)),
+            ).props(
                 "color='red'",
             )
     dialog.open()
@@ -129,6 +146,11 @@ def upload_image(e: UploadEventArguments) -> None:
 
 def switch_action(e: ValueChangeEventArguments) -> None:
     """Fire switch action event."""
+    print(type_toggle.value, e.value)
+    if type_toggle.value == "pixel" and e.value == "smudge":
+        action_toggle.value = "pen"
+        ui.notify("You cannot select the smudge action while in pixel mode.", type="negative")
+        return
     ui.run_javascript(f"""
     const event = new Event('change');
     const actionSelect = document.querySelector("#action-select");
@@ -146,7 +168,7 @@ with ui.row().style("display: flex; width: 100%;"):
         ui.switch("Dark mode").bind_value(dark)
         ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
         ui.button("Download").props("id='download-button'")
-        ui.upload(
+        file_uploader = ui.upload(
             label="Upload file",
             # The following event is fired in case the image upload is above the canvas.
             # This would change the getBoundingClientRect() of the canvas.
