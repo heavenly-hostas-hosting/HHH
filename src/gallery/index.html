@@ -7,9 +7,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
 
         <!-- PyScript CSS -->
-        <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
-        <!-- CSS for examples -->
-        <link rel="stylesheet" href="./assets/css/examples.css" />
+        <!-- <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css"> -->
 
         <!-- Script for Three js -->
         <script type="importmap">
@@ -26,35 +24,20 @@
         <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
         <script type="module">
             import * as THREE from 'three';
+            import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+			import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
             import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
             import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js'
 
             window.THREE = THREE;
+            window.LineSegments2 = LineSegments2;
+            window.LineMaterial = LineMaterial;
             window.GLTFLoader = GLTFLoader;
             window.PointerLockControls = PointerLockControls;
           
         </script>
         <!-- for splashscreen -->
-        <style>
-            #loading { outline: none; border: none; background: transparent }
-            #instructions {
-              position: absolute;
-              top: 14%;
-              left: 50%;
-              transform: translate(-50%, -50%); /* perfectly center horizontally & vertically */
-              max-width: 80%; /* optional, keeps text from stretching too wide */
-              text-align: center;
-              color: black;
-              font-size: 28px;
-              font-family: sans-serif;
-              font-weight: bold;
-              background-color: white; /* highlight effect */
-              padding: 12px 20px; /* padding inside box */
-              border-radius: 8px; /* rounded corners */
-              box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* subtle shadow for depth */
-              display: none;
-            }
-        </style>
+        <link rel="stylesheet" href="assets/css/style.css">
         <script type="module">
             const loading = document.getElementById('loading');
             addEventListener('py:ready', () => loading.close());
@@ -63,11 +46,8 @@
             loading.showModal();
         </script>
 
-        <title>Raycaster Icosahedron</title>
-        <!-- link rel="icon" type="image/png" href="./assets/favicon.png" />
-
-        <!-- Icosahedron Example Specific CSS -->
-        <link rel="stylesheet" href="./assets/css/icosahedron.css" />
+        <title>Image Gallery</title>
+        <!-- <link rel="icon" type="image/png" href="./assets/favicon.png" /> -->
 
     </head>
 
@@ -76,17 +56,6 @@
             <h1>Loading...</h1>
         </dialog>
 
-        <div class="container-fluid fixed-top header disable-selection">
-            <div class="row">
-                <div class="col"></div>
-                <div class="col-md-6">
-                    <div class="row">
-                        <div class="col"></div>
-                    </div>
-                </div>
-                <div class="col"></div>
-            </div>
-        </div>
         <div id="instructions">Click here to look around!</div>
         <script type="py" src="./main.py" config="./pyscript.toml"></script>
 

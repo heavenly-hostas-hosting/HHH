@@ -6,7 +6,7 @@
 
 from pyodide.ffi import to_js, create_proxy
 from pyscript import when, window, document
-from js import Math, THREE, Object, console, GLTFLoader, PointerLockControls
+from js import Math, THREE, LineSegments2, LineMaterial, Object, console, GLTFLoader, PointerLockControls
 
 from collections import defaultdict
 from enum import Enum
@@ -16,6 +16,11 @@ import asyncio
 def log(*msgs):
     for msg in msgs:
         console.log(msg)
+
+
+def convert_dict_to_js_object(my_dict: dict):
+    """Convert a Python dict to a JavaScript object."""
+    return Object.fromEntries(to_js(my_dict))
 
 
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
@@ -174,34 +179,77 @@ def generate_lights() -> None:
     SCENE.add(ambientLight)
 
 
-def load_image():
+def load_image(image_loc: str):
     textureLoader = THREE.TextureLoader.new()
-    texture = textureLoader.load(
-        "assets/images/test-image-nobg.png",
-        create_proxy(lambda e: create_plane(texture)),
-        create_proxy(log),
-        create_proxy(log),
-    )
+    texture = textureLoader.load(image_loc)
+    # texture = textureLoader.load(
+    #     image_loc,
+    #     create_proxy(lambda e: create_photoframe(texture)),
+    #     create_proxy(log),
+    #     create_proxy(log),
+    # )
+    return texture
 
 
 def create_plane(texture):
-    perms = Object.fromEntries(
-        to_js(
-            {
-                "map": texture,
-                # the color makes it look wierd so commented it
-                # "color": "#A6D32B",
-            }
-        )
+    perms = convert_dict_to_js_object(
+        {
+            "map": texture,
+            "transparent": True,        # removes the black bg
+
+            # the color makes it look wierd so commented it
+            # "color": "#A6D32B",
+        }
     )
 
     geometry = THREE.PlaneGeometry.new(1, 1, 1)
     material = THREE.MeshBasicMaterial.new(perms)
     plane = THREE.Mesh.new(geometry, material)
-    plane.position.x = 0.55
-    plane.position.y = 1.6
-    plane.position.z = 1.36
-    SCENE.add(plane)
+
+    plane.scale.x = 1.414       # as HiPeople said the aspect ratio is 1 : sqrt2
+
+    return plane
+
+# doesnt work, idk why
+"""
+def create_borders(plane):
+    width = 0.02  # Width of the border
+
+    # Create a border around the plane
+    borderGeometry = THREE.EdgesGeometry.new(plane.geometry)
+    borderMaterial = LineMaterial.new(
+        convert_dict_to_js_object({
+            "color": "#FF0000",
+            "linewidth": 10
+            })
+        )
+    border = LineSegments2.new(borderGeometry, borderMaterial)
+
+    # Set the position and scale of the border
+    border.position.copy(plane.position)
+    border.scale.x = plane.scale.x * (1 + width)
+    border.scale.y = plane.scale.y * (1 + width)
+    border.scale.z = plane.scale.z * (1 + width)
+
+    return border
+ """
+
+def create_photoframe(image_loc):
+    texture = load_image(image_loc)
+    plane = create_plane(texture)
+    # border = create_borders(plane)
+
+    photo = THREE.Object3D.new()
+    photo.add(plane)
+    # photo.add(border)
+
+    photo.position.x = 0
+    photo.position.y = 1.6
+    photo.position.z = 1.36
+
+    SCENE.add(photo)
+
+    return photo
 
 
 def tree_print(x, indent=0):
@@ -263,5 +311,5 @@ async def main():
 if __name__ == "__main__":
     generate_lights()
     load_gallery()
-    load_image()
+    create_photoframe("assets/images/tree-test-image.avif")        # added a new image
     asyncio.ensure_future(main())
