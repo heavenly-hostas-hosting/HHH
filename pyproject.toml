@@ -63,3 +63,6 @@ ignore = [
     "TD003",
     "FIX",
 ]
+
+[tool.uv.workspace]
+members = ["packages/editor"]
