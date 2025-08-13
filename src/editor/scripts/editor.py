@@ -348,6 +348,8 @@ def type_change(event: Event) -> None:
     elif ctx.type == "pixel":
         ctx.imageSmoothingEnabled = False
         ctx.scaled_by = 0.5
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
     resize(event)
 
 
