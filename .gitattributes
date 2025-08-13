@@ -1,0 +1,4 @@
+# Blender 3D models
+*.blend binary
+# Model binaries
+*.glb binary
