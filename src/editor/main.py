@@ -144,7 +144,7 @@ def upload_image(e: UploadEventArguments) -> None:
     ui.run_javascript(f"""
         let event = new Event("change");
         const fileUpload = document.querySelector("#file-upload");
-        fileUpload.src = "data:{e.type};base64,{content}"
+        fileUpload.src = "data:{e.type};base64,{content}";
         fileUpload.dispatchEvent(event);
     """)
     # e.sender is the file upload element which has a .reset() method
@@ -153,16 +153,15 @@ def upload_image(e: UploadEventArguments) -> None:
 
 def switch_action(e: ValueChangeEventArguments) -> None:
     """Fire switch action event."""
-    print(type_toggle.value, e.value)
     if type_toggle.value == "pixel" and e.value == "smudge":
         action_toggle.value = "pen"
         ui.notify("You cannot select the smudge action while in pixel mode.", type="negative")
         return
     ui.run_javascript(f"""
-    const event = new Event('change');
-    const actionSelect = document.querySelector("#action-select");
-    actionSelect.setAttribute("value", "{e.value}");
-    actionSelect.dispatchEvent(event);
+        const event = new Event('change');
+        const actionSelect = document.querySelector("#action-select");
+        actionSelect.setAttribute("value", "{e.value}");
+        actionSelect.dispatchEvent(event);
     """)
 
 
