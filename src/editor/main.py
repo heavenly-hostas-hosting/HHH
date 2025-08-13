@@ -203,7 +203,7 @@ with ui.row().style("display: flex; width: 100%;"):
             value="pen",
             on_change=switch_action,
         ).props(
-            "id='action-select'",
+            "id='action-select' class='keyboard-shortcuts' shortcut_data='toggle,p:🖊️,e:🧽,s:💨'",
         )
         ui.separator().classes("w-full")
         with ui.row():
@@ -213,7 +213,9 @@ with ui.row().style("display: flex; width: 100%;"):
                     ui.label(colour)
                     colour_label = ui.label("00")
                     colour_values.append(colour_label)
-        ui.button("Spin", on_click=spin)
+        ui.button("Spin", on_click=spin).props(
+            "class='keyboard-shortcuts' shortcut_data='btn,c'"
+        )
         ui.separator().classes("w-full")
         width_input = ui.number(label="Line Width", min=1, max=50, step=1)
         width_slider = ui.slider(
@@ -231,9 +233,10 @@ ui.add_body_html("""
     <py-config>
         [[fetch]]
         from = "/scripts/"
-        files = ["canvas_ctx.py", "editor.py"]
+        files = ["canvas_ctx.py", "editor.py", "shortcuts.py"]
     </py-config>
     <script type="py" src="/scripts/editor.py"></script>
+    <script type="py" src="/scripts/shortcuts.py"></script>
 """)
 
 ui.run()
