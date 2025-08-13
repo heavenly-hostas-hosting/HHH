@@ -171,9 +171,18 @@ class CanvasContext:
     ###########################################################################
     # Builtin Methods
     ###########################################################################
-    def arc(self) -> None:
+    def arc(  # noqa: PLR0913
+        self,
+        x: float,
+        y: float,
+        radius: float,
+        startAngle: float,
+        endAngle: float,
+        *,
+        counterclockwise: bool = False,
+    ) -> None:
         """Add arc."""
-        self.ctx.arc()
+        self.ctx.arc(x, y, radius, startAngle, endAngle, counterclockwise)
 
     def arcTo(self) -> None:
         """Add arcTo."""

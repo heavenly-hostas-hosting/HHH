@@ -66,8 +66,9 @@ def revert_type() -> None:
     global_vars["type_programatically_changed"] = False
 
 
-def handle_type_change(*, mode_value: bool) -> None:
+def handle_type_change(dialog: ui.dialog, *, mode_value: bool) -> None:
     """Handle type change."""
+    dialog.close()
     do_reset(mode_value=mode_value)
     action_toggle.set_value("pen")
     if type_toggle.value == "smooth":
@@ -78,6 +79,10 @@ def handle_type_change(*, mode_value: bool) -> None:
         width_input.disable()
         width_slider.disable()
         file_uploader.disable()
+    ui.run_javascript("""
+        const event = new Event('resize');
+        window.dispatchEvent(event);
+    """)
 
 
 def change_type(*, mode_value: bool = False) -> None:
@@ -96,7 +101,7 @@ def change_type(*, mode_value: bool = False) -> None:
             )
             ui.button(
                 "Change",
-                on_click=lambda: (dialog.close(), handle_type_change(mode_value=mode_value)),
+                on_click=lambda: handle_type_change(dialog, mode_value=mode_value),
             ).props(
                 "color='red'",
             )
@@ -141,13 +146,9 @@ def upload_image(e: UploadEventArguments) -> None:
         const fileUpload = document.querySelector("#file-upload");
         fileUpload.src = "data:{e.type};base64,{content}"
         fileUpload.dispatchEvent(event);
-
-        // The following event is fired in case the image upload is above the canvas.
-        // This would change the getBoundingClientRect() of the canvas.
-        event = new Event('resize');
-        window.dispatchEvent(event);
     """)
-    e.sender.reset()
+    # e.sender is the file upload element which has a .reset() method
+    e.sender.reset()  # type: ignore  # noqa: PGH003
 
 
 def switch_action(e: ValueChangeEventArguments) -> None:
@@ -186,9 +187,13 @@ with ui.row().style("display: flex; width: 100%;"):
             on_change=lambda e: change_type(mode_value=e.value),
         ).props("id='type-select'")
 
-    ui.element("canvas").props("id='image-canvas'").style(
-        "border: 1px solid black; background-color: white;",
-    )
+    with ui.element("div").style("position: relative;"):
+        ui.element("canvas").props("id='image-canvas'").style(
+            "border: 1px solid black; background-color: white;",
+        )
+        ui.element("canvas").props("id='buffer-canvas'").style(
+            "pointer-events: none; position: absolute; top: 0; left: 0;",
+        )
 
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
