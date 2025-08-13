@@ -1,42 +1,43 @@
-## PLACEHOLDER, TAKEN FROM:
-## https://pyscript.com/@examples/webgl-icosahedron/latest
+## PLACEHOLDER, TAKEN FROM:			# think we can remove this now, basically deleted most of their code
+## https:#pyscript.com/@examples/webgl-icosahedron/latest
 
 ## DOCS
-## https://threejs.org/docs/
+## https:#threejs.org/docs/
 
-from pyodide.ffi import create_proxy
+from pyodide.ffi import to_js, create_proxy
 from pyscript import when, window, document
-from js import Math, THREE, GLTFLoader, PointerLockControls
+from js import Math, THREE, Object, console, GLTFLoader, PointerLockControls
 
 from collections import defaultdict
 from enum import Enum
 import asyncio
 
 
+def log(*msgs):
+    for msg in msgs:
+        console.log(msg)
+
+
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
-document.body.appendChild(RENDERER.domElement)
-RENDERER.setSize(1000, 1000)
 RENDERER.shadowMap.enabled = False
 RENDERER.shadowMap.type = THREE.PCFSoftShadowMap
 RENDERER.shadowMap.needsUpdate = True
 RENDERER.setSize(window.innerWidth, window.innerHeight)
+document.body.appendChild(RENDERER.domElement)
 
 CAMERA = THREE.PerspectiveCamera.new(53, window.innerWidth / window.innerHeight, 0.01, 500)
 CAMERA.position.set(3, 1, 3.5)
 CAMERA.rotation.set(0, 0.4, 0)
 
-setcolor = "#000000"
+setcolor = "#8B8B8B"  # Nicer than just black
 SCENE = THREE.Scene.new()
 SCENE.background = THREE.Color.new(setcolor)
 # SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
-
 # CAMERA.lookAt(SCENE.position)
 
 MODULAR_GROUP = THREE.Object3D.new()
 SCENE.add(MODULAR_GROUP)
 
-
-MOUSE = THREE.Vector2.new()
 
 CONTROLS = PointerLockControls.new(CAMERA, document.body)
 document.getElementById("instructions").addEventListener("click", create_proxy(CONTROLS.lock))
@@ -78,6 +79,7 @@ KEY_STATES: dict[str, bool] = defaultdict(bool)
 document.addEventListener("keydown", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, True)))
 document.addEventListener("keyup", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, False)))
 
+# Global variable to toggle running
 RUN_STATE = False
 
 
@@ -139,6 +141,9 @@ def move_character(delta_time: float):
     CAMERA.position.addScaledVector(VELOCITY, delta_time)
 
 
+MOUSE = THREE.Vector2.new()
+
+
 @when("mousemove", "body")
 def onMouseMove(event):
     event.preventDefault()
@@ -167,12 +172,35 @@ def generate_lights() -> None:
     ambientLight = THREE.AmbientLight.new(0xFFFFFF, 0.3)
     SCENE.add(ambientLight)
 
-    # rectSize = 2
-    # intensity = 14
-    # rectLight = THREE.RectAreaLight.new(0x0FFFFF, intensity, rectSize, rectSize)
-    # rectLight.position.set(0, 0, 1)
-    # rectLight.lookAt(0, 0, 0)
-    # SCENE.add(rectLight)
+
+def load_image():
+    textureLoader = THREE.TextureLoader.new()
+    texture = textureLoader.load(
+        "assets/images/test-image-nobg.png",
+        create_proxy(lambda e: create_plane(texture)),
+        create_proxy(log),
+        create_proxy(log),
+    )
+
+
+def create_plane(texture):
+    perms = Object.fromEntries(
+        to_js(
+            {
+                "map": texture,
+                # the color makes it look wierd so commented it
+                # "color": "#A6D32B",
+            }
+        )
+    )
+
+    geometry = THREE.PlaneGeometry.new(1, 1, 1)
+    material = THREE.MeshBasicMaterial.new(perms)
+    plane = THREE.Mesh.new(geometry, material)
+    plane.position.x = 0.55
+    plane.position.y = 1.6
+    plane.position.z = 1.36
+    SCENE.add(plane)
 
 
 def tree_print(x, indent=0):
@@ -234,4 +262,5 @@ async def main():
 if __name__ == "__main__":
     generate_lights()
     load_gallery()
+    load_image()
     asyncio.ensure_future(main())
