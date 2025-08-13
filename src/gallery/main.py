@@ -39,6 +39,7 @@ MODULAR_GROUP = THREE.Object3D.new()
 SCENE.add(MODULAR_GROUP)
 
 
+# Camera controls and mouse lock
 CONTROLS = PointerLockControls.new(CAMERA, document.body)
 document.getElementById("instructions").addEventListener("click", create_proxy(CONTROLS.lock))
 CONTROLS.addEventListener(
@@ -57,7 +58,7 @@ CONTROLS.addEventListener(
         lambda x: setattr(
             document.getElementById("instructions").style,
             "display",
-            "",
+            "block",
         ),
     ),
 )

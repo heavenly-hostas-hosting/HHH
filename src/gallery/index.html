@@ -39,17 +39,27 @@
             #loading { outline: none; border: none; background: transparent }
             #instructions {
               position: absolute;
-              top: 50%;
-              width: 100%;
+              top: 14%;
+              left: 50%;
+              transform: translate(-50%, -50%); /* perfectly center horizontally & vertically */
+              max-width: 80%; /* optional, keeps text from stretching too wide */
               text-align: center;
-              color: white;
-              font-size: 24px;
+              color: black;
+              font-size: 28px;
               font-family: sans-serif;
+              font-weight: bold;
+              background-color: white; /* highlight effect */
+              padding: 12px 20px; /* padding inside box */
+              border-radius: 8px; /* rounded corners */
+              box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* subtle shadow for depth */
+              display: none;
             }
         </style>
         <script type="module">
             const loading = document.getElementById('loading');
             addEventListener('py:ready', () => loading.close());
+            const instructions = document.getElementById('instructions')
+            addEventListener('py:ready', () => instructions.style.display='block');
             loading.showModal();
         </script>
 
@@ -77,7 +87,7 @@
                 <div class="col"></div>
             </div>
         </div>
-        <div id="instructions">Click to look around!</div>
+        <div id="instructions">Click here to look around!</div>
         <script type="py" src="./main.py" config="./pyscript.toml"></script>
 
     </body>
