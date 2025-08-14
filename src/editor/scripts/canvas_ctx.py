@@ -256,9 +256,11 @@ class CanvasContext:
         image: JsProxy,
         dx: float,
         dy: float,
+        dWidth: float | None = None,
+        dHeight: float | None = None,
     ) -> None:
         """Add drawImage."""
-        self.ctx.drawImage(image, dx, dy)
+        self.ctx.drawImage(image, dx, dy, dWidth, dHeight)
 
     def ellipse(  # noqa: PLR0913 We didn't decide how many args there are so...
         self,

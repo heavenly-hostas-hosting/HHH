@@ -75,14 +75,14 @@ def handle_type_change(dialog: ui.dialog, *, mode_value: bool) -> None:
         width_input.enable()
         width_slider.enable()
         file_uploader.enable()
+        text_input.enable()
+        add_text_button.enable()
     elif type_toggle.value == "pixel":
         width_input.disable()
         width_slider.disable()
         file_uploader.disable()
-    ui.run_javascript("""
-        const event = new Event('resize');
-        window.dispatchEvent(event);
-    """)
+        text_input.disable()
+        add_text_button.disable()
 
 
 def change_type(*, mode_value: bool = False) -> None:
@@ -238,7 +238,7 @@ with ui.row().style("display: flex; width: 100%;"):
             label="Text",
             placeholder="Start typing",
         ).props("id='text-input'")
-        ui.button(
+        add_text_button = ui.button(
             "Add to canvas",
             on_click=lambda: (
                 ui.run_javascript("""
