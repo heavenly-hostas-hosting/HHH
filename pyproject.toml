@@ -2,7 +2,12 @@
 name = "insert-catchy-name-here"
 description = "A little app"
 authors = [
-    { name = "Your Name" }
+    { name = "Matiiss", email = "matiiss@matiiss.com" },
+    { name = "PiLogic" },
+    { name = "HiPeople21" },
+    { name = "Sergio Díaz-Esparza" },
+    { name = "Alan Manning" },
+    { name = "Aadil Goyal" },
 ]
 version = "0.1.0"
 readme = "README.md"
