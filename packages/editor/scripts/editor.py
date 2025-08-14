@@ -1,5 +1,5 @@
 # This should be under the other imports but because it isn't imported in the traditional way, it's above them.
-from canvas_ctx import CanvasContext
+from canvas_ctx import CanvasContext  # pyright: ignore[reportMissingImports] #
 
 # Following imports have the ignore flag as they are not pip installed
 from js import (  # pyright: ignore[reportMissingImports]
@@ -137,6 +137,7 @@ def draw_pixel(x: float, y: float) -> None:
     Args:
         x (float): X coordinate
         y (float): Y coordinate
+
     """
     ctx.fillStyle = ctx.strokeStyle
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
@@ -151,6 +152,7 @@ def show_action_icon(x: float, y: float) -> bool:
 
     Returns:
         bool: If True is returned mousemove doesn't do anything else
+
     """
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
     if ctx.moving_image:
@@ -217,6 +219,7 @@ def draw_smudge(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The javascript mouse event
+
     """
     x, y = get_canvas_coords(event)
     # draw the pevious smudge data at the current xy.
@@ -233,6 +236,7 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
 
     Returns:
         tuple[float, float]: The x and y coordinates
+
     """
     x = (event.pageX - ctx.bounding_rect.left) * ctx.scaled_by
     y = (event.pageY - ctx.bounding_rect.top) * ctx.scaled_by
@@ -248,6 +252,7 @@ def start_path(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
+
     """
     if event.button != 0:
         return
@@ -271,6 +276,7 @@ def mouse_tracker(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
+
     """
     x, y = get_canvas_coords(event)
 
@@ -310,6 +316,7 @@ def stop_path(_: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
+
     """
     if ctx.text_placed:
         ctx.writing_text = False
@@ -324,6 +331,7 @@ def start_reentry_path(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): Mouse event
+
     """
     if ctx.drawing:
         x, y = get_canvas_coords(event)
@@ -337,6 +345,7 @@ def leaves_canvas(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
+
     """
     if not ctx.drawing:
         return
@@ -356,6 +365,7 @@ def canvas_click(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
+
     """
     if event.button != 0:
         return
@@ -394,6 +404,7 @@ def colour_change(_: Event) -> None:
 
     Args:
         _ (Event): Change event
+
     """
     ctx.strokeStyle = window.pen.colour
     ctx.fillStyle = window.pen.colour
@@ -407,6 +418,7 @@ def width_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
+
     """
     ctx.lineWidth = int(event.target.getAttribute("aria-valuenow"))
     buffer_ctx.lineWidth = ctx.lineWidth
@@ -418,6 +430,7 @@ def action_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
+
     """
     ctx.action = event.target.getAttribute("value")
     match ctx.action:
@@ -435,6 +448,7 @@ def add_text(_: Event) -> None:
 
     Args:
         _ (Event): Add text event
+
     """
     ctx.text_value = text_input.value
     if ctx.text_value:
@@ -456,6 +470,7 @@ def type_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
+
     """
     ctx.type = event.target.getAttribute("value")
     if ctx.type == "smooth":
@@ -475,6 +490,7 @@ def reset_board(_: Event) -> None:
 
     Args:
         _ (Event): Reset event
+
     """
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
@@ -485,6 +501,7 @@ def download_image(_: Event) -> None:
 
     Args:
         _ (Event): Click event
+
     """
     link = document.createElement("a")
     link.download = "download.avif"
@@ -499,6 +516,7 @@ def upload_image(e: Event) -> None:
 
     Args:
         e (Event): Upload event
+
     """
     ctx.prev_operation = ctx.globalCompositeOperation
     ctx.globalCompositeOperation = "source-over"
@@ -515,6 +533,7 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
         _ (Event): Resize event
         keep_content (bool): Flag to keep the existing content. It's technically not a dict. It's an Object,
                             but I can't type hint with it.
+
     """
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
@@ -572,6 +591,7 @@ def handle_scroll(e: Event) -> None:
 
     Args:
         e (Event): Scroll event
+
     """
     e.preventDefault()
     print(e.deltaY)
