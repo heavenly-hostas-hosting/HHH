@@ -7,6 +7,7 @@ from js import (  # pyright: ignore[reportMissingImports]
     Math,
     MouseEvent,
     Object,
+    createImageBitmap,
     document,
     window,
 )
@@ -88,13 +89,28 @@ def draw_pixel(x: float, y: float) -> None:
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
-def show_action_icon(x: float, y: float) -> None:
+def show_action_icon(x: float, y: float) -> bool:
     """Show icon to let user know what the action would look like.
 
     Args:
         x (float): X coordinate
         y (float): Y coordinate
+
+    Returns:
+        bool: If True is returned mousemove doesn't do anything else
     """
+    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if ctx.moving_image:
+        buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        return True
+    if ctx.writing_text:
+        text_dimensions = ctx.measureText(ctx.text_value)
+        buffer_ctx.fillText(
+            ctx.text_value,
+            x - text_dimensions.width / 2,
+            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+        )
+        return True
     if ctx.type == "smooth":
         buffer_ctx.beginPath()
         buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)  # Put a dot here
@@ -110,6 +126,7 @@ def show_action_icon(x: float, y: float) -> None:
             buffer_ctx.stroke()
             buffer_ctx.lineWidth = prev_width
             buffer_ctx.fillStyle = prev_fill
+    return False
 
 
 def get_smudge_data(x: float, y: float) -> ImageData:
@@ -204,19 +221,8 @@ def mouse_tracker(event: MouseEvent) -> None:
     """
     x, y = get_canvas_coords(event)
 
-    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
-    if ctx.moving_image:
-        buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+    if show_action_icon(x, y):
         return
-    if ctx.writing_text:
-        text_dimensions = ctx.measureText(ctx.text_value)
-        buffer_ctx.fillText(
-            ctx.text_value,
-            x - text_dimensions.width / 2,
-            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
-        )
-        return
-    show_action_icon(x, y)
     if not ctx.drawing:
         return
 
@@ -385,7 +391,7 @@ def type_change(event: Event) -> None:
         ctx.scaled_by = 0.5
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    resize(event)
+    resize(event, keep_content=False)
 
 
 @when("reset", "body")
@@ -395,15 +401,7 @@ def reset_board(_: Event) -> None:
     Args:
         _ (Event): Reset event
     """
-    line_width = ctx.lineWidth
-    stroke_style = ctx.strokeStyle
-    global_composite_operation = ctx.globalCompositeOperation
-    ctx.reset()
-    ctx.lineWidth = line_width
-    ctx.strokeStyle = stroke_style
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-    ctx.globalCompositeOperation = global_composite_operation
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
 
 @when("click", "#download-button")
@@ -435,11 +433,13 @@ def upload_image(e: Event) -> None:
 
 
 @create_proxy
-def resize(_: Event) -> None:
+def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001, FBT002 keep_content has to be a positional arg
     """Resize canvas according to window.
 
     Args:
         _ (Event): Resize event
+        keep_content (bool): Flag to keep the existing content. It's technically not a dict. It's an Object,
+                            but I can't type hint with it.
     """
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
@@ -454,18 +454,58 @@ def resize(_: Event) -> None:
 
     canvas.height = display_height * ctx.scaled_by
     canvas.width = display_width * ctx.scaled_by
-
     ctx.bounding_rect = canvas.getBoundingClientRect()
-    ctx.putImageData(data, 0, 0)
+
+    if isinstance(keep_content, bool):
+        if keep_content:
+            createImageBitmap(data).then(
+                lambda img_bitmap: ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
+            )
+    # I don't know why but keep_content is an object sometimes
+    elif keep_content.keep_content:  # pyright: ignore[reportAttributeAccessIssue]
+        createImageBitmap(data).then(
+            lambda img_bitmap: ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
+        )
 
     ctx.lineWidth = line_width
     ctx.strokeStyle = stroke_style
 
+    ctx.imageSmoothingEnabled = False
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
+    ctx.font = "50px serif"
     ctx.globalCompositeOperation = global_composite_operation
+
+    buffer.style.height = f"{display_height}px"
+    buffer.style.width = f"{display_width}px"
+
+    buffer.height = display_height * ctx.scaled_by
+    buffer.width = display_width * ctx.scaled_by
+
+    buffer_ctx.imageSmoothingEnabled = False
+    buffer_ctx.strokeStyle = "black"
+    buffer_ctx.lineWidth = 5
+    buffer_ctx.lineCap = "round"
+    buffer_ctx.lineJoin = "round"
+    buffer_ctx.font = "50px serif"
+
+
+@create_proxy
+def handle_scroll(e: Event) -> None:
+    """Handle scrolling on the canvas. Used to increase/decrease the size of images/text etc.
+
+    Args:
+        e (Event): Scroll event
+    """
+    e.preventDefault()
+    print(e.deltaY)
 
 
 window.addEventListener("resize", resize)
 
-ctx.current_img.onload = resize
+ctx.current_img.addEventListener("load", resize)
+
+# The wheel event is for most browsers. The mousewheel event is deprecated
+# but the wheel event is not supported by Safari and Webviewer on iOS.
+canvas.addEventListener("wheel", handle_scroll)
+canvas.addEventListener("mousewheel", handle_scroll)
