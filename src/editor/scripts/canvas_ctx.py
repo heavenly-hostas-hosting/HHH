@@ -8,8 +8,21 @@ from js import (  # pyright: ignore[reportMissingImports]
 from pyodide.ffi import JsProxy  # pyright: ignore[reportMissingImports]
 
 
+class DOMRect:
+    """Bounding box typehint."""
+
+    bottom: float
+    height: float
+    left: float
+    right: float
+    top: float
+    width: float
+    x: float
+    y: float
+
+
 class TextMetrics:
-    """Textmetrics typehints."""
+    """TextMetrics typehint."""
 
     actualBoundingBoxAscent: float
     actualBoundingBoxDescent: float
@@ -174,7 +187,7 @@ class CanvasContext:
     ###########################################################################
     # Cutstom Methods
     ###########################################################################
-    def getBoundingClientRect(self) -> Any:  # noqa: ANN401
+    def getBoundingClientRect(self) -> DOMRect:
         """Get the canvas getBoundingClientRect."""
         return self.canvas.getBoundingClientRect()
 
@@ -194,7 +207,7 @@ class CanvasContext:
     ###########################################################################
     # Builtin Methods
     ###########################################################################
-    def arc(  # noqa: PLR0913
+    def arc(  # noqa: PLR0913 This method has this many arguments.
         self,
         x: float,
         y: float,
@@ -266,7 +279,7 @@ class CanvasContext:
         """Add drawImage."""
         self.ctx.drawImage(image, dx, dy, dWidth, dHeight)
 
-    def ellipse(  # noqa: PLR0913 We didn't decide how many args there are so...
+    def ellipse(  # noqa: PLR0913 This method has this many arguments.
         self,
         x: float,
         y: float,
@@ -297,9 +310,9 @@ class CanvasContext:
         """Add getContextAttributes."""
         self.ctx.getContextAttributes()
 
-    def getImageData(self, sx: float, sy: float, sw: float, sh: float) -> Any:  # noqa: ANN401
+    def getImageData(self, sx: float, sy: float, sw: float, sh: float) -> ImageData:
         """Get the image data from the canvas."""
-        self.ctx.getImageData(sx, sy, sw, sh)
+        return self.ctx.getImageData(sx, sy, sw, sh)
 
     def getLineDash(self) -> None:
         """Add getLineDash."""
@@ -333,7 +346,7 @@ class CanvasContext:
         """Move to the x, y given."""
         self.ctx.moveTo(x, y)
 
-    def putImageData(  # noqa: PLR0913
+    def putImageData(  # noqa: PLR0913 This method has this many arguments.
         self,
         imageData: ImageData,
         dx: float,

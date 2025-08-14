@@ -6,6 +6,8 @@ import random
 from nicegui import app, ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
+SPIN_COUNT = 10
+
 app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
 ui.add_head_html("""
@@ -128,11 +130,11 @@ Hex = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E"
 async def spin() -> None:
     """Change RGB values."""
     hex_value = ""
-    for x in range(10):
+    for x in range(SPIN_COUNT):
         for y in range(3):
-            text = random.choice(Hex) + random.choice(Hex)  # noqa: S311
+            text = random.choice(Hex) + random.choice(Hex)  # noqa: S311 This isn't for cryptography
             colour_values[y].text = text
-            if x == 9:  # noqa: PLR2004
+            if x == SPIN_COUNT - 1:
                 hex_value += text
         await asyncio.sleep(0.1)
     ui.run_javascript(f"""

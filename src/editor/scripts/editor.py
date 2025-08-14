@@ -1,5 +1,7 @@
-# Following imports have the ignore flag as they are not pip installed
+# This should be under the other imports but because it isn't imported in the traditional way, it's above them.
 from canvas_ctx import CanvasContext
+
+# Following imports have the ignore flag as they are not pip installed
 from js import (  # pyright: ignore[reportMissingImports]
     Event,
     Image,
