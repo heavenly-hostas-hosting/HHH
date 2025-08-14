@@ -1,0 +1,52 @@
+from fastapi import HTTPException, Request
+from gotrue.constants import STORAGE_KEY
+from supabase import AsyncClient, AsyncClientOptions, create_async_client
+
+from . import env
+
+ACCESS_TOKEN_COOKIE_KEY = "sb_access_token"  # noqa: S105
+REFRESH_TOKEN_COOKIE_KEY = "sb_refresh_token"  # noqa: S105
+CODE_VERIFIER_COOKIE_KEY = "sb_code_verifier"
+
+
+async def create_internal_client() -> AsyncClient:
+    """Create a Supabase client."""
+    return await create_async_client(
+        supabase_url=env.SUPABASE_INTERNAL_URL,
+        supabase_key=env.SUPABASE_KEY,
+        options=AsyncClientOptions(flow_type="pkce"),
+    )
+
+
+async def create_external_client() -> AsyncClient:
+    """Create a Supabase client."""
+    return await create_async_client(
+        supabase_url=env.SUPABASE_EXTERNAL_URL,
+        supabase_key=env.SUPABASE_KEY,
+        options=AsyncClientOptions(flow_type="pkce"),
+    )
+
+
+async def get_code_verifier_from_client(client: AsyncClient) -> str:
+    """Get the code verifier from the client."""
+    storage = client.auth._storage  # noqa: SLF001
+    code_verifier = await storage.get_item(f"{STORAGE_KEY}-code-verifier")
+
+    if code_verifier is None:
+        raise HTTPException(status_code=401, detail="Code verifier not found in storage")
+
+    return code_verifier
+
+
+async def get_session(request: Request) -> AsyncClient:
+    """Get a Supabase client session."""
+    access_token = request.cookies.get(ACCESS_TOKEN_COOKIE_KEY)
+    refresh_token = request.cookies.get(REFRESH_TOKEN_COOKIE_KEY)
+
+    if access_token is None or refresh_token is None:
+        raise HTTPException(status_code=401, detail="No session tokens found")
+
+    client = await create_internal_client()
+    await client.auth.set_session(access_token=access_token, refresh_token=refresh_token)
+
+    return client

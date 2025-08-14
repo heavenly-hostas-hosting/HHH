@@ -1,64 +1,60 @@
 [project]
-# This section contains metadata about your project.
-# Don't forget to change the name, description, and authors to match your project!
-name = "code-jam-template"
-description = "Add your description here"
-authors = [{ name = "Your Name" }]
+name = "insert-catchy-name-here"
+description = "A little app"
+authors = [
+    { name = "Matiiss", email = "matiiss@matiiss.com" },
+    { name = "PiLogic" },
+    { name = "HiPeople21" },
+    { name = "Sergio Díaz-Esparza" },
+    { name = "Alan Manning" },
+    { name = "Aadil Goyal" },
+]
 version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["nicegui>=2.22.2"]
+dependencies = []
 
 [dependency-groups]
 # This `dev` group contains all the development requirements for our linting toolchain.
-# Don't forget to pin your dependencies!
-# This list will have to be migrated if you wish to use another dependency manager.
 dev = ["pre-commit~=4.2.0", "ruff~=0.12.2"]
 
 [tool.ruff]
-# Increase the line length. This breaks PEP8 but it is way easier to work with.
-# The original reason for this limit was a standard vim terminal is only 79 characters,
-# but this doesn't really apply anymore.
 line-length = 119
-# Target Python 3.12. If you decide to use a different version of Python
-# you will need to update this value.
-target-version = "py312"
+target-version = "py312" # Target Python 3.12
 # Automatically fix auto-fixable issues.
 fix = true
 # The directory containing the source code. If you choose a different project layout
 # you will need to update this value.
-src = ["src"]
+src = ["src"] # TODO: fix
 
 [tool.ruff.lint]
-# Enable all linting rules.
 select = ["ALL"]
 # Ignore some of the most obnoxious linting errors.
 ignore = [
-  # Missing docstrings.
-  "D100",
-  "D104",
-  "D105",
-  "D106",
-  "D107",
-  # Docstring whitespace.
-  "D203",
-  "D213",
-  "D413",
-  # Docstring punctuation.
-  "D415",
-  # Docstring quotes.
-  "D301",
-  # lowercase issues.
-  "N802",
-  "N803",
-  # clas scope should not be mixedCase
-  "N815",
-  # Builtins.
-  "A",
-  # Print statements.
-  "T20",
-  # TODOs.
-  "TD002",
-  "TD003",
-  "FIX",
+    # Missing docstrings.
+    "D100",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    # Docstring whitespace.
+    "D203",
+    "D213",
+    # Docstring punctuation.
+    "D415",
+    # Docstring quotes.
+    "D301",
+    # Builtins.
+    "A",
+    # Print statements.
+    "T20",
+    # TODOs.
+    "TD002",
+    "TD003",
+    "FIX",
+    # Namespace packages.
+    "INP001",
 ]
+
+[tool.uv.workspace]
+members = ["packages/backend", "packages/editor", "packages/gallery"]
