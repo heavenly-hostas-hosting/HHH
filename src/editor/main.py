@@ -196,6 +196,9 @@ with ui.row().style("display: flex; width: 100%;"):
 
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
+        with ui.row():
+            ui.button("Undo").props("id='undo-button'")
+            ui.button("Redo").props("id='redo-button'")
         action_options = {
             "pen": "🖊️",
             "eraser": "🧽",

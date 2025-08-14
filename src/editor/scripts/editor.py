@@ -62,6 +62,7 @@ ctx.bounding_rect = canvas.getBoundingClientRect()
 ctx.current_img = Image.new()
 ctx.moving_image = False
 ctx.writing_text = False
+ctx.text_placed = True
 ctx.prev_operation = "source-over"
 
 
@@ -72,10 +73,36 @@ buffer_ctx.lineCap = "round"
 buffer_ctx.lineJoin = "round"
 buffer_ctx.font = "50px serif"
 
+ctx.history = []
+ctx.history_index = -1
+MAX_HISTORY = 50
 
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
 
+def save_history():
+    ctx.history = ctx.history[:ctx.history_index + 1]
+    if len(ctx.history) >= MAX_HISTORY:
+        ctx.history.pop(0)
+        ctx.history_index -= 1
+    
+    ctx.history.append(ctx.getImageData(0,0,canvas.width,canvas.height))
+    ctx.history_index += 1
+    window.console.log("saved")
+
+@when("click","#undo-button")
+def undo(_: Event) -> None:
+    if ctx.history_index <= 0:
+        return
+    ctx.history_index -= 1
+    ctx.putImageData(ctx.history[ctx.history_index], 0, 0)
+
+@when("click","#redo-button")
+def redo(_: Event) -> None:
+    if ctx.history_index >= len(ctx.history) - 1:
+        return
+    ctx.history_index += 1
+    ctx.putImageData(ctx.history[ctx.history_index], 0, 0)
 
 def draw_pixel(x: float, y: float) -> None:
     """Draws the pixel on the canvas.
@@ -208,13 +235,14 @@ def mouse_tracker(event: MouseEvent) -> None:
     if ctx.moving_image:
         buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         return
-    if ctx.writing_text:
+    if not(ctx.text_placed):
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
             x - text_dimensions.width / 2,
             y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
         )
+    if ctx.writing_text:
         return
     show_action_icon(x, y)
     if not ctx.drawing:
@@ -243,8 +271,11 @@ def stop_path(_: MouseEvent) -> None:
     Args:
         event (MouseEvent): The mouse event
     """
+    if ctx.text_placed:
+        ctx.writing_text = False
     if ctx.drawing:
         ctx.drawing = False
+        save_history()
 
 
 @when("mouseenter", "#image-canvas")
@@ -276,6 +307,7 @@ def leaves_canvas(event: MouseEvent) -> None:
 
     ctx.drawing = False
     ctx.smudge_data = None
+    save_history()
 
 
 @when("mousedown", "#image-canvas")
@@ -288,14 +320,12 @@ def canvas_click(event: MouseEvent) -> None:
     if event.button != 0:
         return
     x, y = get_canvas_coords(event)
-
     if ctx.moving_image:
-        ctx.moving_image = False
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         ctx.globalCompositeOperation = ctx.prev_operation
     elif ctx.writing_text:
-        ctx.writing_text = False
+        ctx.text_placed = True
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         text_dimensions = ctx.measureText(ctx.text_value)
         ctx.fillText(
@@ -314,7 +344,6 @@ def canvas_click(event: MouseEvent) -> None:
             draw_pixel(x, y)
         elif ctx.action == "eraser":
             ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
-
 
 @when("colourChange", "body")
 def colour_change(_: Event) -> None:
@@ -365,6 +394,7 @@ def add_text(_: Event) -> None:
     ctx.text_value = document.getElementById("text-input").value
     if ctx.text_value:
         ctx.writing_text = True
+        ctx.text_placed = False
         ctx.prev_operation = ctx.globalCompositeOperation
         ctx.globalCompositeOperation = "source-over"
 
@@ -469,3 +499,4 @@ def resize(_: Event) -> None:
 window.addEventListener("resize", resize)
 
 ctx.current_img.onload = resize
+save_history()
