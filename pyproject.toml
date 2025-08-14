@@ -65,4 +65,4 @@ ignore = [
 ]
 
 [tool.uv.workspace]
-members = ["packages/editor", "packages/gallery"]
+members = ["packages/backend", "packages/editor", "packages/gallery"]
