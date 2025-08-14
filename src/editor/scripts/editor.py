@@ -7,6 +7,7 @@ from js import (  # pyright: ignore[reportMissingImports]
     Math,
     MouseEvent,
     Object,
+    createImageBitmap,
     document,
     window,
 )
@@ -15,6 +16,11 @@ from pyscript import when  # pyright: ignore[reportMissingImports]
 
 canvas = document.getElementById("image-canvas")
 buffer = document.getElementById("buffer-canvas")
+text_input = document.getElementById("text-input")
+
+bold_input = document.getElementById("bold-text")
+italics_input = document.getElementById("italics-text")
+font_family_input = document.getElementById("text-font-family").querySelector("input")
 
 settings = Object()
 settings.willReadFrequently = True
@@ -52,6 +58,7 @@ ctx.strokeStyle = "black"
 ctx.lineWidth = 5
 ctx.lineCap = "round"
 ctx.lineJoin = "round"
+ctx.font = "50px Brush Script MT"
 
 # Custom attributes attached so we don't need to use global vars
 ctx.drawing = False
@@ -60,7 +67,10 @@ ctx.type = "smooth"
 ctx.bounding_rect = canvas.getBoundingClientRect()
 ctx.current_img = Image.new()
 ctx.moving_image = False
+ctx.writing_text = False
+ctx.text_placed = True
 ctx.prev_operation = "source-over"
+ctx.text_settings = {"bold": False, "italics": False, "size": 50, "font-family": "Arial"}
 
 
 buffer_ctx.imageSmoothingEnabled = False
@@ -68,10 +78,55 @@ buffer_ctx.strokeStyle = "black"
 buffer_ctx.lineWidth = 5
 buffer_ctx.lineCap = "round"
 buffer_ctx.lineJoin = "round"
+buffer_ctx.font = f"{ctx.text_settings['size']}px {ctx.text_settings['font-family']}"
 
+ctx.history = []
+ctx.history_index = -1
+MAX_HISTORY = 50
 
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
+
+
+def save_history() -> None:
+    """Save the historical data."""
+    ctx.history = ctx.history[: ctx.history_index + 1]
+    if len(ctx.history) >= MAX_HISTORY:
+        ctx.history.pop(0)
+        ctx.history_index -= 1
+
+    ctx.history.append(ctx.getImageData(0, 0, canvas.width, canvas.height))
+    ctx.history_index += 1
+
+
+@when("click", "#undo-button")
+def undo(_: Event) -> None:
+    """Undo history."""
+    if ctx.history_index <= 0:
+        return
+    ctx.history_index -= 1
+
+    createImageBitmap(ctx.history[ctx.history_index]).then(
+        lambda img_bitmap: (
+            ctx.clearRect(0, 0, canvas.width, canvas.height),
+            ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
+        ),
+    )
+
+
+@when("click", "#redo-button")
+def redo(_: Event) -> None:
+    """Redo history."""
+    if ctx.history_index >= len(ctx.history) - 1:
+        return
+    ctx.history_index += 1
+
+    createImageBitmap(ctx.history[ctx.history_index]).then(
+        lambda img_bitmap: (
+            ctx.clearRect(0, 0, canvas.width, canvas.height),
+            ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
+        ),
+    )
 
 
 def draw_pixel(x: float, y: float) -> None:
@@ -85,13 +140,28 @@ def draw_pixel(x: float, y: float) -> None:
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
 
-def show_action_icon(x: float, y: float) -> None:
+def show_action_icon(x: float, y: float) -> bool:
     """Show icon to let user know what the action would look like.
 
     Args:
         x (float): X coordinate
         y (float): Y coordinate
+
+    Returns:
+        bool: If True is returned mousemove doesn't do anything else
     """
+    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if ctx.moving_image:
+        buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        return True
+    if ctx.writing_text:
+        text_dimensions = ctx.measureText(ctx.text_value)
+        buffer_ctx.fillText(
+            ctx.text_value,
+            x - text_dimensions.width / 2,
+            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+        )
+        return True
     if ctx.type == "smooth":
         buffer_ctx.beginPath()
         buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)  # Put a dot here
@@ -107,6 +177,7 @@ def show_action_icon(x: float, y: float) -> None:
             buffer_ctx.stroke()
             buffer_ctx.lineWidth = prev_width
             buffer_ctx.fillStyle = prev_fill
+    return False
 
 
 def get_smudge_data(x: float, y: float) -> ImageData:
@@ -201,11 +272,17 @@ def mouse_tracker(event: MouseEvent) -> None:
     """
     x, y = get_canvas_coords(event)
 
-    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
-    if ctx.moving_image:
-        buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+    if show_action_icon(x, y):
         return
-    show_action_icon(x, y)
+    if not (ctx.text_placed):
+        text_dimensions = ctx.measureText(ctx.text_value)
+        buffer_ctx.fillText(
+            ctx.text_value,
+            x - text_dimensions.width / 2,
+            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+        )
+    if ctx.writing_text:
+        return
     if not ctx.drawing:
         return
 
@@ -232,8 +309,11 @@ def stop_path(_: MouseEvent) -> None:
     Args:
         event (MouseEvent): The mouse event
     """
+    if ctx.text_placed:
+        ctx.writing_text = False
     if ctx.drawing:
         ctx.drawing = False
+        save_history()
 
 
 @when("mouseenter", "#image-canvas")
@@ -265,6 +345,7 @@ def leaves_canvas(event: MouseEvent) -> None:
 
     ctx.drawing = False
     ctx.smudge_data = None
+    save_history()
 
 
 @when("mousedown", "#image-canvas")
@@ -277,11 +358,21 @@ def canvas_click(event: MouseEvent) -> None:
     if event.button != 0:
         return
     x, y = get_canvas_coords(event)
-
     if ctx.moving_image:
         ctx.moving_image = False
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        ctx.globalCompositeOperation = ctx.prev_operation
+        save_history()
+    elif ctx.writing_text:
+        ctx.text_placed = True
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+        text_dimensions = ctx.measureText(ctx.text_value)
+        ctx.fillText(
+            ctx.text_value,
+            x - text_dimensions.width / 2,
+            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+        )
         ctx.globalCompositeOperation = ctx.prev_operation
     elif ctx.type == "smooth":
         ctx.beginPath()
@@ -303,7 +394,9 @@ def colour_change(_: Event) -> None:
         _ (Event): Change event
     """
     ctx.strokeStyle = window.pen.colour
+    ctx.fillStyle = window.pen.colour
     buffer_ctx.strokeStyle = window.pen.colour
+    buffer_ctx.fillStyle = window.pen.colour
 
 
 @when("change", ".width-input")
@@ -334,6 +427,27 @@ def action_change(event: Event) -> None:
             ctx.globalCompositeOperation = "source-over"
 
 
+@when("addText", "#text-input")
+def add_text(_: Event) -> None:
+    """Add text to canvas.
+
+    Args:
+        _ (Event): Add text event
+    """
+    ctx.text_value = text_input.value
+    if ctx.text_value:
+        ctx.writing_text = True
+        ctx.text_placed = False
+        ctx.prev_operation = ctx.globalCompositeOperation
+        ctx.globalCompositeOperation = "source-over"
+        ctx.text_settings["bold"] = "bold" if bold_input.getAttribute("aria-checked") == "true" else "normal"
+        ctx.text_settings["italics"] = "italic" if italics_input.getAttribute("aria-checked") == "true" else "normal"
+        ctx.text_settings["font-family"] = font_family_input.value
+        # I know it's too long but it doesn't work otherwise
+        ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
+        buffer_ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
+
+
 @when("change", "#type-select")
 def type_change(event: Event) -> None:
     """Handle type change.
@@ -348,7 +462,9 @@ def type_change(event: Event) -> None:
     elif ctx.type == "pixel":
         ctx.imageSmoothingEnabled = False
         ctx.scaled_by = 0.5
-    resize(event)
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    resize(event, keep_content=False)
 
 
 @when("reset", "body")
@@ -358,15 +474,7 @@ def reset_board(_: Event) -> None:
     Args:
         _ (Event): Reset event
     """
-    line_width = ctx.lineWidth
-    stroke_style = ctx.strokeStyle
-    global_composite_operation = ctx.globalCompositeOperation
-    ctx.reset()
-    ctx.lineWidth = line_width
-    ctx.strokeStyle = stroke_style
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-    ctx.globalCompositeOperation = global_composite_operation
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
 
 @when("click", "#download-button")
@@ -398,15 +506,18 @@ def upload_image(e: Event) -> None:
 
 
 @create_proxy
-def resize(_: Event) -> None:
+def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001, FBT002 keep_content has to be a positional arg
     """Resize canvas according to window.
 
     Args:
         _ (Event): Resize event
+        keep_content (bool): Flag to keep the existing content. It's technically not a dict. It's an Object,
+                            but I can't type hint with it.
     """
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
+    font = ctx.font
     global_composite_operation = ctx.globalCompositeOperation
     display_height = window.innerHeight * 0.95
 
@@ -417,18 +528,60 @@ def resize(_: Event) -> None:
 
     canvas.height = display_height * ctx.scaled_by
     canvas.width = display_width * ctx.scaled_by
-
     ctx.bounding_rect = canvas.getBoundingClientRect()
-    ctx.putImageData(data, 0, 0)
+
+    if isinstance(keep_content, bool):
+        if keep_content:
+            createImageBitmap(data).then(
+                lambda img_bitmap: ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
+            )
+    # I don't know why but keep_content is an object sometimes
+    elif keep_content.keep_content:  # pyright: ignore[reportAttributeAccessIssue]
+        createImageBitmap(data).then(
+            lambda img_bitmap: ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
+        )
 
     ctx.lineWidth = line_width
     ctx.strokeStyle = stroke_style
 
+    ctx.imageSmoothingEnabled = False
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
+    ctx.font = font
     ctx.globalCompositeOperation = global_composite_operation
+
+    buffer.style.height = f"{display_height}px"
+    buffer.style.width = f"{display_width}px"
+
+    buffer.height = display_height * ctx.scaled_by
+    buffer.width = display_width * ctx.scaled_by
+
+    buffer_ctx.imageSmoothingEnabled = False
+    buffer_ctx.strokeStyle = stroke_style
+    buffer_ctx.lineWidth = line_width
+    buffer_ctx.lineCap = "round"
+    buffer_ctx.lineJoin = "round"
+    buffer_ctx.font = font
+
+
+@create_proxy
+def handle_scroll(e: Event) -> None:
+    """Handle scrolling on the canvas. Used to increase/decrease the size of images/text etc.
+
+    Args:
+        e (Event): Scroll event
+    """
+    e.preventDefault()
+    print(e.deltaY)
 
 
 window.addEventListener("resize", resize)
 
-ctx.current_img.onload = resize
+ctx.current_img.addEventListener("load", resize)
+
+# The wheel event is for most browsers. The mousewheel event is deprecated
+# but the wheel event is not supported by Safari and Webviewer on iOS.
+canvas.addEventListener("wheel", handle_scroll)
+canvas.addEventListener("mousewheel", handle_scroll)
+
+save_history()

@@ -75,14 +75,20 @@ def handle_type_change(dialog: ui.dialog, *, mode_value: bool) -> None:
         width_input.enable()
         width_slider.enable()
         file_uploader.enable()
+        text_input.enable()
+        add_text_button.enable()
+        bold_checkbox.enable()
+        italics_checkbox.enable()
+        font_family.enable()
     elif type_toggle.value == "pixel":
         width_input.disable()
         width_slider.disable()
         file_uploader.disable()
-    ui.run_javascript("""
-        const event = new Event('resize');
-        window.dispatchEvent(event);
-    """)
+        text_input.disable()
+        add_text_button.disable()
+        bold_checkbox.disable()
+        italics_checkbox.disable()
+        font_family.disable()
 
 
 def change_type(*, mode_value: bool = False) -> None:
@@ -144,7 +150,7 @@ def upload_image(e: UploadEventArguments) -> None:
     ui.run_javascript(f"""
         let event = new Event("change");
         const fileUpload = document.querySelector("#file-upload");
-        fileUpload.src = "data:{e.type};base64,{content}"
+        fileUpload.src = "data:{e.type};base64,{content}";
         fileUpload.dispatchEvent(event);
     """)
     # e.sender is the file upload element which has a .reset() method
@@ -153,16 +159,15 @@ def upload_image(e: UploadEventArguments) -> None:
 
 def switch_action(e: ValueChangeEventArguments) -> None:
     """Fire switch action event."""
-    print(type_toggle.value, e.value)
     if type_toggle.value == "pixel" and e.value == "smudge":
         action_toggle.value = "pen"
         ui.notify("You cannot select the smudge action while in pixel mode.", type="negative")
         return
     ui.run_javascript(f"""
-    const event = new Event('change');
-    const actionSelect = document.querySelector("#action-select");
-    actionSelect.setAttribute("value", "{e.value}");
-    actionSelect.dispatchEvent(event);
+        const event = new Event('change');
+        const actionSelect = document.querySelector("#action-select");
+        actionSelect.setAttribute("value", "{e.value}");
+        actionSelect.dispatchEvent(event);
     """)
 
 
@@ -197,6 +202,9 @@ with ui.row().style("display: flex; width: 100%;"):
 
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
+        with ui.row():
+            ui.button("Undo").props("id='undo-button'")
+            ui.button("Redo").props("id='redo-button'")
         action_options = {
             "pen": "🖊️",
             "eraser": "🧽",
@@ -208,7 +216,7 @@ with ui.row().style("display: flex; width: 100%;"):
             value="pen",
             on_change=switch_action,
         ).props(
-            "id='action-select'",
+            "id='action-select' class='keyboard-shortcuts' shortcut_data='toggle,p:🖊️,e:🧽,s:💨'",
         )
         ui.separator().classes("w-full")
         with ui.row():
@@ -218,7 +226,7 @@ with ui.row().style("display: flex; width: 100%;"):
                     ui.label(colour)
                     colour_label = ui.label("00")
                     colour_values.append(colour_label)
-        ui.button("Spin", on_click=spin)
+        ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,c'")
         ui.separator().classes("w-full")
         width_input = ui.number(label="Line Width", min=1, max=50, step=1)
         width_slider = ui.slider(
@@ -231,14 +239,47 @@ with ui.row().style("display: flex; width: 100%;"):
                 """),
         ).classes("width-input")
         width_input.bind_value(width_slider)
+        ui.separator().classes("w-full")
+        text_input = ui.input(
+            label="Text",
+            placeholder="Start typing",
+        ).props("id='text-input'")
+        bold_checkbox = ui.checkbox("Bold").props("id='bold-text'")
+        italics_checkbox = ui.checkbox("Italics").props("id='italics-text'")
+        font_family = ui.select(
+            [
+                "Arial",
+                "Verdana",
+                "Tahoma",
+                "Trebuchet MS",
+                "Times New Roman",
+                "Georgia",
+                "Garamond",
+                "Courier New",
+                "Brush Script MT",
+            ],
+            value="Arial",
+        ).props("id='text-font-family'")
+        add_text_button = ui.button(
+            "Add to canvas",
+            on_click=lambda: (
+                ui.run_javascript("""
+                const event = new Event("addText");
+                document.querySelector("#text-input").dispatchEvent(event);
+            """),
+                text_input.set_value(""),
+            ),
+        )
+
 
 ui.add_body_html("""
     <py-config>
         [[fetch]]
         from = "/scripts/"
-        files = ["canvas_ctx.py", "editor.py"]
+        files = ["canvas_ctx.py", "editor.py", "shortcuts.py"]
     </py-config>
     <script type="py" src="/scripts/editor.py"></script>
+    <script type="py" src="/scripts/shortcuts.py"></script>
 """)
 
 ui.run()
