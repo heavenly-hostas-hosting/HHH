@@ -32,3 +32,4 @@ build/
 
 # For now we're keeping .blend files out of the repo
 *.blend
+*.blend1

@@ -4,9 +4,19 @@
 ## DOCS
 ## https:#threejs.org/docs/
 
-from pyodide.ffi import to_js, create_proxy
-from pyscript import when, window, document
-from js import Math, THREE, LineSegments2, LineMaterial, Object, console, GLTFLoader, PointerLockControls
+from pyodide.ffi import to_js, create_proxy  # pyright: ignore[reportMissingImports]
+from pyscript import when, window, document  # pyright: ignore[reportMissingImports]
+from js import (  # pyright: ignore[reportMissingImports]
+    Math,
+    THREE,
+    LineSegments2,
+    LineMaterial,
+    Object,
+    console,
+    GLTFLoader,
+    PointerLockControls,
+)
+
 
 from collections import defaultdict
 from enum import Enum
@@ -195,8 +205,7 @@ def create_plane(texture):
     perms = convert_dict_to_js_object(
         {
             "map": texture,
-            "transparent": True,        # removes the black bg
-
+            "transparent": True,  # removes the black bg
             # the color makes it look wierd so commented it
             # "color": "#A6D32B",
         }
@@ -206,9 +215,14 @@ def create_plane(texture):
     material = THREE.MeshBasicMaterial.new(perms)
     plane = THREE.Mesh.new(geometry, material)
 
-    plane.scale.x = 1.414       # as HiPeople said the aspect ratio is 1 : sqrt2
+    plane.scale.x = 1.414  # as HiPeople said the aspect ratio is 1 : sqrt2
 
     return plane
+
+
+V3 = tuple[float, float, float]
+V2 = tuple[float, float]
+PAINTING_SLOTS: dict[int, tuple[V3, V3, V2]] = {}
 
 # doesnt work, idk why
 """
@@ -234,7 +248,21 @@ def create_borders(plane):
     return border
  """
 
-def create_photoframe(image_loc):
+
+async def snap_to_slot(photo, slot: int):
+    while slot not in PAINTING_SLOTS:
+        await asyncio.sleep(0.05)
+    (x, y, z), (nx, ny, nz), (w, h) = PAINTING_SLOTS[slot]
+    photo.position.x = x
+    photo.position.y = y
+    photo.position.z = z
+
+    q = THREE.Quaternion.new()
+    q.setFromUnitVectors(THREE.Vector3.new(-1, 0, 0), THREE.Vector3.new(nx, ny, nz))
+    photo.quaternion.copy(q)
+
+
+async def create_photoframe(image_loc, slot: int = 0):
     texture = load_image(image_loc)
     plane = create_plane(texture)
     # border = create_borders(plane)
@@ -243,10 +271,7 @@ def create_photoframe(image_loc):
     photo.add(plane)
     # photo.add(border)
 
-    photo.position.x = 0
-    photo.position.y = 1.6
-    photo.position.z = 1.36
-
+    await snap_to_slot(photo, slot)
     SCENE.add(photo)
 
     return photo
@@ -266,24 +291,32 @@ def load_gallery():
         obj = gltf.scene
         MODULAR_GROUP.add(obj)
 
-        obj.position.x = 0
-        obj.position.y = 0
-        obj.position.z = 0
-
-        obj.rotation.x = 0
-        obj.rotation.y = 0
-        obj.rotation.z = 0
-
-        obj.scale.x = 1
-        obj.scale.y = 1
-        obj.scale.z = 1
-
         # Backface culling
+        assert obj.children[0].name == "Cube"
         for v in obj.children[0].children:
             v.material.side = THREE.FrontSide
 
+        for v in obj.children[1:]:
+            id_ = int(v.name[-3:])
+            position: V3 = v.position.x, v.position.y, v.position.z
+
+            n_array = v.geometry.attributes.normal.array
+            # Y-up/Z-up shenanigans
+            normal: V3 = (n_array[0], n_array[2], n_array[1])
+
+            bb = v.geometry.boundingBox
+            size_xyz = [abs(getattr(bb.max, i) - getattr(bb.min, i)) for i in ("x", "y", "z")]
+            # Height is Z
+            size_wh: V2 = (max(size_xyz[0], size_xyz[1]), (size_xyz[2]))
+
+            PAINTING_SLOTS[id_] = (position, normal, size_wh)
+
+            v.visible = False
+
         print(f"Loading done! Here's its component structure:")
         print(tree_print(obj))
+        print(f"Painting slots:")
+        print(list(PAINTING_SLOTS.keys()))
 
     def inner_progress(xhr):
         print(str(xhr.loaded) + " loaded")
@@ -311,5 +344,9 @@ async def main():
 if __name__ == "__main__":
     generate_lights()
     load_gallery()
-    create_photoframe("assets/images/tree-test-image.avif")        # added a new image
+    asyncio.ensure_future(create_photoframe("assets/images/tree-test-image.avif", 0))
+    asyncio.ensure_future(create_photoframe("assets/images/test-image-nobg.png", 1))
+    for i in range(2, 12):
+        asyncio.ensure_future(create_photoframe("assets/images/test-image.webp", i))
+
     asyncio.ensure_future(main())
