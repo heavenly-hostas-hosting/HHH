@@ -77,6 +77,7 @@ class CanvasContext:
         "color",
         "luminosity",
     ]
+    text_settings: dict[str, str | bool | int]
 
     # Builtin attributes
     canvas: Any

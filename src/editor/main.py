@@ -77,12 +77,18 @@ def handle_type_change(dialog: ui.dialog, *, mode_value: bool) -> None:
         file_uploader.enable()
         text_input.enable()
         add_text_button.enable()
+        bold_checkbox.enable()
+        italics_checkbox.enable()
+        font_family.enable()
     elif type_toggle.value == "pixel":
         width_input.disable()
         width_slider.disable()
         file_uploader.disable()
         text_input.disable()
         add_text_button.disable()
+        bold_checkbox.disable()
+        italics_checkbox.disable()
+        font_family.disable()
 
 
 def change_type(*, mode_value: bool = False) -> None:
@@ -235,6 +241,22 @@ with ui.row().style("display: flex; width: 100%;"):
             label="Text",
             placeholder="Start typing",
         ).props("id='text-input'")
+        bold_checkbox = ui.checkbox("Bold").props("id='bold-text'")
+        italics_checkbox = ui.checkbox("Italics").props("id='italics-text'")
+        font_family = ui.select(
+            [
+                "Arial",
+                "Verdana",
+                "Tahoma",
+                "Trebuchet MS",
+                "Times New Roman",
+                "Georgia",
+                "Garamond",
+                "Courier New",
+                "Brush Script MT",
+            ],
+            value="Arial",
+        ).props("id='text-font-family'")
         add_text_button = ui.button(
             "Add to canvas",
             on_click=lambda: (

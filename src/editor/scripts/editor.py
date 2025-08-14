@@ -16,6 +16,11 @@ from pyscript import when  # pyright: ignore[reportMissingImports]
 
 canvas = document.getElementById("image-canvas")
 buffer = document.getElementById("buffer-canvas")
+text_input = document.getElementById("text-input")
+
+bold_input = document.getElementById("bold-text")
+italics_input = document.getElementById("italics-text")
+font_family_input = document.getElementById("text-font-family").querySelector("input")
 
 settings = Object()
 settings.willReadFrequently = True
@@ -53,7 +58,7 @@ ctx.strokeStyle = "black"
 ctx.lineWidth = 5
 ctx.lineCap = "round"
 ctx.lineJoin = "round"
-ctx.font = "50px serif"
+ctx.font = "50px Brush Script MT"
 
 # Custom attributes attached so we don't need to use global vars
 ctx.drawing = False
@@ -64,6 +69,7 @@ ctx.current_img = Image.new()
 ctx.moving_image = False
 ctx.writing_text = False
 ctx.prev_operation = "source-over"
+ctx.text_settings = {"bold": False, "italics": False, "size": 50, "font-family": "Arial"}
 
 
 buffer_ctx.imageSmoothingEnabled = False
@@ -71,7 +77,7 @@ buffer_ctx.strokeStyle = "black"
 buffer_ctx.lineWidth = 5
 buffer_ctx.lineCap = "round"
 buffer_ctx.lineJoin = "round"
-buffer_ctx.font = "50px serif"
+buffer_ctx.font = f"{ctx.text_settings['size']}px {ctx.text_settings['font-family']}"
 
 
 PIXEL_SIZE = 8
@@ -368,11 +374,17 @@ def add_text(_: Event) -> None:
     Args:
         _ (Event): Add text event
     """
-    ctx.text_value = document.getElementById("text-input").value
+    ctx.text_value = text_input.value
     if ctx.text_value:
         ctx.writing_text = True
         ctx.prev_operation = ctx.globalCompositeOperation
         ctx.globalCompositeOperation = "source-over"
+        ctx.text_settings["bold"] = "bold" if bold_input.getAttribute("aria-checked") == "true" else "normal"
+        ctx.text_settings["italics"] = "italic" if italics_input.getAttribute("aria-checked") == "true" else "normal"
+        ctx.text_settings["font-family"] = font_family_input.value
+        # I know it's too long but it doesn't work otherwise
+        ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
+        buffer_ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
 
 
 @when("change", "#type-select")
