@@ -29,3 +29,6 @@ build/
 .vscode/
 # MacOS
 .DS_Store
+
+# supabase volumes
+volumes/
