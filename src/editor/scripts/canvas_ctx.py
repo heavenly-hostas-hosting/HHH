@@ -78,6 +78,9 @@ class CanvasContext:
         "luminosity",
     ]
     text_settings: dict[str, str | bool | int]
+    history: list[Any]
+    history_index: int
+    text_placed: bool
 
     # Builtin attributes
     canvas: Any

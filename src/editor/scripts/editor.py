@@ -87,29 +87,47 @@ MAX_HISTORY = 50
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
 
-def save_history():
-    ctx.history = ctx.history[:ctx.history_index + 1]
+
+def save_history() -> None:
+    """Save the historical data."""
+    ctx.history = ctx.history[: ctx.history_index + 1]
     if len(ctx.history) >= MAX_HISTORY:
         ctx.history.pop(0)
         ctx.history_index -= 1
-    
-    ctx.history.append(ctx.getImageData(0,0,canvas.width,canvas.height))
-    ctx.history_index += 1
-    window.console.log("saved")
 
-@when("click","#undo-button")
+    ctx.history.append(ctx.getImageData(0, 0, canvas.width, canvas.height))
+    ctx.history_index += 1
+
+
+@when("click", "#undo-button")
 def undo(_: Event) -> None:
+    """Undo history."""
     if ctx.history_index <= 0:
         return
     ctx.history_index -= 1
-    ctx.putImageData(ctx.history[ctx.history_index], 0, 0)
 
-@when("click","#redo-button")
+    createImageBitmap(ctx.history[ctx.history_index]).then(
+        lambda img_bitmap: (
+            ctx.clearRect(0, 0, canvas.width, canvas.height),
+            ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
+        ),
+    )
+
+
+@when("click", "#redo-button")
 def redo(_: Event) -> None:
+    """Redo history."""
     if ctx.history_index >= len(ctx.history) - 1:
         return
     ctx.history_index += 1
-    ctx.putImageData(ctx.history[ctx.history_index], 0, 0)
+
+    createImageBitmap(ctx.history[ctx.history_index]).then(
+        lambda img_bitmap: (
+            ctx.clearRect(0, 0, canvas.width, canvas.height),
+            ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
+        ),
+    )
+
 
 def draw_pixel(x: float, y: float) -> None:
     """Draws the pixel on the canvas.
@@ -256,7 +274,7 @@ def mouse_tracker(event: MouseEvent) -> None:
 
     if show_action_icon(x, y):
         return
-    if not(ctx.text_placed):
+    if not (ctx.text_placed):
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
@@ -341,9 +359,11 @@ def canvas_click(event: MouseEvent) -> None:
         return
     x, y = get_canvas_coords(event)
     if ctx.moving_image:
+        ctx.moving_image = False
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         ctx.globalCompositeOperation = ctx.prev_operation
+        save_history()
     elif ctx.writing_text:
         ctx.text_placed = True
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -365,6 +385,7 @@ def canvas_click(event: MouseEvent) -> None:
         elif ctx.action == "eraser":
             ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
 
+
 @when("colourChange", "body")
 def colour_change(_: Event) -> None:
     """Handle colour change.
@@ -373,7 +394,9 @@ def colour_change(_: Event) -> None:
         _ (Event): Change event
     """
     ctx.strokeStyle = window.pen.colour
+    ctx.fillStyle = window.pen.colour
     buffer_ctx.strokeStyle = window.pen.colour
+    buffer_ctx.fillStyle = window.pen.colour
 
 
 @when("change", ".width-input")
@@ -494,6 +517,7 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
+    font = ctx.font
     global_composite_operation = ctx.globalCompositeOperation
     display_height = window.innerHeight * 0.95
 
@@ -523,7 +547,7 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
     ctx.imageSmoothingEnabled = False
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
-    ctx.font = "50px serif"
+    ctx.font = font
     ctx.globalCompositeOperation = global_composite_operation
 
     buffer.style.height = f"{display_height}px"
@@ -533,11 +557,11 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
     buffer.width = display_width * ctx.scaled_by
 
     buffer_ctx.imageSmoothingEnabled = False
-    buffer_ctx.strokeStyle = "black"
-    buffer_ctx.lineWidth = 5
+    buffer_ctx.strokeStyle = stroke_style
+    buffer_ctx.lineWidth = line_width
     buffer_ctx.lineCap = "round"
     buffer_ctx.lineJoin = "round"
-    buffer_ctx.font = "50px serif"
+    buffer_ctx.font = font
 
 
 @create_proxy
