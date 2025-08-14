@@ -8,6 +8,23 @@ from js import (  # pyright: ignore[reportMissingImports]
 from pyodide.ffi import JsProxy  # pyright: ignore[reportMissingImports]
 
 
+class TextMetrics:
+    """Textmetrics typehints."""
+
+    actualBoundingBoxAscent: float
+    actualBoundingBoxDescent: float
+    actualBoundingBoxLeft: float
+    actualBoundingBoxRight: float
+    alphabeticBaseline: float
+    emHeightAscent: float
+    emHeightDescent: float
+    fontBoundingBoxAscent: float
+    fontBoundingBoxDescent: float
+    hangingBaseline: float
+    ideographicBaseline: float
+    width: float
+
+
 class CanvasSettings:
     """`CanvasSettings` for `CanvasContext`."""
 
@@ -30,6 +47,8 @@ class CanvasContext:
     smudge_data: ImageData
     prev_data: ImageData
     moving_image: bool
+    writing_text: bool
+    text_value: str
     prev_operation: Literal[
         "source-over",
         "source-in",
@@ -264,9 +283,9 @@ class CanvasContext:
         """Add fillRect."""
         self.ctx.fillRect(x, y, width, height)
 
-    def fillText(self) -> None:
+    def fillText(self, text: str, x: float, y: float) -> None:
         """Add fillText."""
-        self.ctx.fillText()
+        self.ctx.fillText(text, x, y)
 
     def getContextAttributes(self) -> None:
         """Add getContextAttributes."""
@@ -300,9 +319,9 @@ class CanvasContext:
         """Make a  line to the x, y given."""
         self.ctx.lineTo(x, y)
 
-    def measureText(self) -> None:
+    def measureText(self, text: str) -> TextMetrics:
         """Add measureText."""
-        self.ctx.measureText()
+        return self.ctx.measureText(text)
 
     def moveTo(self, x: float, y: float) -> None:
         """Move to the x, y given."""

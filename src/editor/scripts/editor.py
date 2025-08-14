@@ -52,6 +52,7 @@ ctx.strokeStyle = "black"
 ctx.lineWidth = 5
 ctx.lineCap = "round"
 ctx.lineJoin = "round"
+ctx.font = "50px serif"
 
 # Custom attributes attached so we don't need to use global vars
 ctx.drawing = False
@@ -60,6 +61,7 @@ ctx.type = "smooth"
 ctx.bounding_rect = canvas.getBoundingClientRect()
 ctx.current_img = Image.new()
 ctx.moving_image = False
+ctx.writing_text = False
 ctx.prev_operation = "source-over"
 
 
@@ -68,6 +70,7 @@ buffer_ctx.strokeStyle = "black"
 buffer_ctx.lineWidth = 5
 buffer_ctx.lineCap = "round"
 buffer_ctx.lineJoin = "round"
+buffer_ctx.font = "50px serif"
 
 
 PIXEL_SIZE = 8
@@ -205,6 +208,14 @@ def mouse_tracker(event: MouseEvent) -> None:
     if ctx.moving_image:
         buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         return
+    if ctx.writing_text:
+        text_dimensions = ctx.measureText(ctx.text_value)
+        buffer_ctx.fillText(
+            ctx.text_value,
+            x - text_dimensions.width / 2,
+            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+        )
+        return
     show_action_icon(x, y)
     if not ctx.drawing:
         return
@@ -283,6 +294,16 @@ def canvas_click(event: MouseEvent) -> None:
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         ctx.globalCompositeOperation = ctx.prev_operation
+    elif ctx.writing_text:
+        ctx.writing_text = False
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+        text_dimensions = ctx.measureText(ctx.text_value)
+        ctx.fillText(
+            ctx.text_value,
+            x - text_dimensions.width / 2,
+            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+        )
+        ctx.globalCompositeOperation = ctx.prev_operation
     elif ctx.type == "smooth":
         ctx.beginPath()
         ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
@@ -332,6 +353,20 @@ def action_change(event: Event) -> None:
             ctx.globalCompositeOperation = "destination-out"
         case "smudge":
             ctx.globalCompositeOperation = "source-over"
+
+
+@when("addText", "#text-input")
+def add_text(_: Event) -> None:
+    """Add text to canvas.
+
+    Args:
+        _ (Event): Add text event
+    """
+    ctx.text_value = document.getElementById("text-input").value
+    if ctx.text_value:
+        ctx.writing_text = True
+        ctx.prev_operation = ctx.globalCompositeOperation
+        ctx.globalCompositeOperation = "source-over"
 
 
 @when("change", "#type-select")

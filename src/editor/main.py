@@ -217,9 +217,7 @@ with ui.row().style("display: flex; width: 100%;"):
                     ui.label(colour)
                     colour_label = ui.label("00")
                     colour_values.append(colour_label)
-        ui.button("Spin", on_click=spin).props(
-            "class='keyboard-shortcuts' shortcut_data='btn,c'"
-        )
+        ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,c'")
         ui.separator().classes("w-full")
         width_input = ui.number(label="Line Width", min=1, max=50, step=1)
         width_slider = ui.slider(
@@ -232,6 +230,22 @@ with ui.row().style("display: flex; width: 100%;"):
                 """),
         ).classes("width-input")
         width_input.bind_value(width_slider)
+        ui.separator().classes("w-full")
+        text_input = ui.input(
+            label="Text",
+            placeholder="Start typing",
+        ).props("id='text-input'")
+        ui.button(
+            "Add to canvas",
+            on_click=lambda: (
+                ui.run_javascript("""
+                const event = new Event("addText");
+                document.querySelector("#text-input").dispatchEvent(event);
+            """),
+                text_input.set_value(""),
+            ),
+        )
+
 
 ui.add_body_html("""
     <py-config>
