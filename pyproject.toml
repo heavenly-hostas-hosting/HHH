@@ -52,6 +52,8 @@ ignore = [
     "TD002",
     "TD003",
     "FIX",
+    # Namespace packages.
+    "INP001",
 ]
 
 [tool.uv.workspace]
