@@ -178,7 +178,7 @@ def show_action_icon(x: float, y: float) -> bool:
     if ctx.moving_image:
         buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         return True
-    if ctx.writing_text:
+    if not(ctx.text_placed):
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
