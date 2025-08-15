@@ -6,6 +6,7 @@ from js import (  # pyright: ignore[reportMissingImports]
     Event,
     Image,
     ImageData,
+    KeyboardEvent,
     Math,
     MouseEvent,
     Object,
@@ -851,9 +852,40 @@ def handle_scroll(e: Event) -> None:
         show_action_icon(x, y)
 
 
+@create_proxy
+def keydown_event(event: KeyboardEvent) -> None:
+    """Handle keydown events.
+
+    Args:
+        event (KeyboardEvent): Keydown event
+
+    """
+    if event.key == "Backspace":
+        if ctx.moving_image:
+            ctx.moving_image = False
+            ctx.globalCompositeOperation = ctx.prev_operation
+            ctx.size_change = 0
+        elif ctx.moving_clip:
+            ctx.moving_clip = False
+            ctx.setLineDash([])
+            buffer_ctx.setLineDash([])
+            ctx.strokeStyle = ctx.prev_stroke_style
+            ctx.lineWidth = ctx.prev_line_width
+
+            buffer_ctx.strokeStyle = ctx.prev_stroke_style
+            buffer_ctx.lineWidth = ctx.prev_line_width
+        elif ctx.writing_text:
+            ctx.writing_text = False
+            ctx.text_placed = True
+            ctx.globalCompositeOperation = ctx.prev_operation
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+
 window.addEventListener("resize", resize)
 
 ctx.current_img.addEventListener("load", resize)
+
+document.addEventListener("keydown", keydown_event)
 
 # The wheel event is for most browsers. The mousewheel event is deprecated
 # but the wheel event is not supported by Safari and Webviewer on iOS.
