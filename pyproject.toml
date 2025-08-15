@@ -4,7 +4,7 @@ description = "A little app"
 authors = [
     { name = "Matiiss", email = "matiiss@matiiss.com" },
     { name = "PiLogic" },
-    { name = "HiPeople21" },
+    { name = "HiPeople21", email = "hipeople3.14159@gmail.com" },
     { name = "Sergio Díaz-Esparza" },
     { name = "Alan Manning" },
     { name = "Aadil Goyal" },
