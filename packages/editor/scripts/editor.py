@@ -240,6 +240,18 @@ def show_action_icon(x: float, y: float) -> bool:
             y - ctx.start_coords[1],
         )
         return True
+    regular_icon_show(x, y)
+    return False
+
+
+def regular_icon_show(x: float, y: float) -> None:
+    """Show preview for regular actions.
+
+    Args:
+        x (float): X coordinate
+        y (float): Y coordinate
+
+    """
     if ctx.type == "smooth":
         buffer_ctx.beginPath()
         buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)  # Put a dot here
@@ -255,7 +267,6 @@ def show_action_icon(x: float, y: float) -> bool:
             buffer_ctx.stroke()
             buffer_ctx.lineWidth = prev_width
             buffer_ctx.fillStyle = prev_fill
-    return False
 
 
 def get_smudge_data(x: float, y: float) -> ImageData:

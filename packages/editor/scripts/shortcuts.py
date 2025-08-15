@@ -12,6 +12,7 @@ def handle_toggle(elem: Element, data: list[str]) -> None:
     Args:
         elem (Element): Toggle element
         data (list[str]): Keybind data
+
     """
     btn_dict = {btn.innerText: btn for btn in elem.children}
 
@@ -27,6 +28,7 @@ def handle_btn(elem: Element, data: list[str]) -> None:
     Args:
         elem (Element): Button element
         data (list[str]): Keybind data
+
     """
     action = elem.click
     key = data[0]
@@ -52,6 +54,7 @@ def handle_keydown(event: KeyboardEvent) -> None:
 
     Args:
         event (KeyboardEvent): Keydown event
+
     """
     # Disable keybinds when writing text
     if event.target == text_input:
