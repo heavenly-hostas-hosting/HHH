@@ -26,6 +26,8 @@ services:
         - PGID=1000 # change this to your group id
     volumes:
         - ./packages/editor:/app
+    # networks:
+    #     - shared-net
 
 
   studio:
@@ -237,6 +239,7 @@ services:
 
 volumes:
   db-config:
+
 # networks:
 #   shared-net:
 #     external: true
