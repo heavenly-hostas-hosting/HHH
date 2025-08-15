@@ -1,0 +1,5 @@
+This is just a list of "tips" we can display to the user with the loading scene
+
+1) "z" toggles run
+2) "shift" is used to go down
+
