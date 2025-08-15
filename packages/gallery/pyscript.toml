@@ -1,3 +1,5 @@
 name = "Image Gallery"
 description = "An online Image Gallery rendered through Three.js and WebGL and programmed in PyScript."
-
+[[fetch]]
+files = []
+from = '.'

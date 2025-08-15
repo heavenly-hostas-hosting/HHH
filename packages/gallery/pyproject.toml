@@ -1,7 +1,7 @@
 [project]
 name = "gallery"
 version = "0.1.0"
-description = "Add your description here"
+description = "An online Image Gallery rendered through Three.js and WebGL and programmed in PyScript."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []

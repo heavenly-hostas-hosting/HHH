@@ -5,6 +5,7 @@
 ## https:#threejs.org/docs/
 
 from pyodide.ffi import to_js, create_proxy  # pyright: ignore[reportMissingImports]
+from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
 from pyscript import when, window, document  # pyright: ignore[reportMissingImports]
 from js import (  # pyright: ignore[reportMissingImports]
     Math,
@@ -21,6 +22,7 @@ from js import (  # pyright: ignore[reportMissingImports]
 from collections import defaultdict
 from enum import Enum
 import asyncio
+import json
 
 
 def log(*msgs):
@@ -189,9 +191,16 @@ def generate_lights() -> None:
     SCENE.add(ambientLight)
 
 
+REPO_URL = (
+    r"https://cdn.jsdelivr.net/gh/"
+    r"Matiiss/pydis-cj12-heavenly-hostas@dev/"
+    r"packages/gallery/assets/images/"
+)
+
+
 def load_image(image_loc: str):
     textureLoader = THREE.TextureLoader.new()
-    texture = textureLoader.load(image_loc)
+    texture = textureLoader.load(REPO_URL + image_loc)
     # texture = textureLoader.load(
     #     image_loc,
     #     create_proxy(lambda e: create_photoframe(texture)),
@@ -333,6 +342,14 @@ def load_gallery():
     )
 
 
+async def load_images_from_listing() -> None:
+    r = await pyfetch(REPO_URL + "../" + "test-image-listing.json")
+    data = await r.text()
+    images = json.loads(data)
+    for idx, img in enumerate(images):
+        asyncio.ensure_future(create_photoframe(img, idx))
+
+
 async def main():
     clock = THREE.Clock.new()
     while True:
@@ -344,9 +361,6 @@ async def main():
 if __name__ == "__main__":
     generate_lights()
     load_gallery()
-    asyncio.ensure_future(create_photoframe("assets/images/tree-test-image.avif", 0))
-    asyncio.ensure_future(create_photoframe("assets/images/test-image-nobg.png", 1))
-    for i in range(2, 12):
-        asyncio.ensure_future(create_photoframe("assets/images/test-image.webp", i))
+    asyncio.ensure_future(load_images_from_listing())
 
     asyncio.ensure_future(main())
