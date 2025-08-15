@@ -109,6 +109,9 @@ class CanvasContext:
     prev_stroke_style: str
     prev_line_width: int
     size_change: int
+    rotation: float
+    is_rotating: bool
+    current_position: list[float]
 
     # Builtin attributes
     canvas: Any
@@ -437,9 +440,9 @@ class CanvasContext:
         """Add restore."""
         self.ctx.restore()
 
-    def rotate(self) -> None:
+    def rotate(self, angle: float) -> None:
         """Add rotate."""
-        self.ctx.rotate()
+        self.ctx.rotate(angle)
 
     def roundRect(self) -> None:  # noqa: N802
         """Add roundRect."""
@@ -477,6 +480,6 @@ class CanvasContext:
         """Add transform."""
         self.ctx.transform()
 
-    def translate(self) -> None:
+    def translate(self, x: float, y: float) -> None:
         """Add translate."""
-        self.ctx.translate()
+        self.ctx.translate(x, y)

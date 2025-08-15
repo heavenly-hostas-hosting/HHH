@@ -6,6 +6,7 @@ from js import (  # pyright: ignore[reportMissingImports]
     Event,
     Image,
     ImageData,
+    KeyboardEvent,
     Math,
     MouseEvent,
     Object,
@@ -79,6 +80,9 @@ ctx.start_coords = [0, 0]
 ctx.prev_stroke_style = "black"
 ctx.prev_line_width = 5
 ctx.size_change = 0
+ctx.rotation = 0
+ctx.is_rotating = False
+ctx.current_position = [0, 0]
 
 
 buffer_ctx.imageSmoothingEnabled = False
@@ -91,8 +95,9 @@ buffer_ctx.font = f"{ctx.text_settings['size']}px {ctx.text_settings['font-famil
 ctx.history = []
 ctx.history_index = -1
 MAX_HISTORY = 50
-MIN_TEXT_SIZE = 20
-MAX_TEXT_SIZE = 200
+MIN_RESIZE_SIZE = 20
+MAX_RESIZE_SIZE = 200
+ROTATION_SPEED = 3
 
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
@@ -169,70 +174,101 @@ def show_action_icon(x: float, y: float) -> bool:
 
     def draw_clip(img_bitmap: ImageBitmap) -> None:
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        buffer_ctx.translate(
+            x,
+            y,
+        )
+        buffer_ctx.rotate(ctx.rotation)
         ratio = img_bitmap.width / img_bitmap.height
 
         if img_bitmap.width < img_bitmap.height:
             buffer_ctx.strokeRect(
-                x - (img_bitmap.width + ctx.size_change) / 2,
-                y - (img_bitmap.height + ctx.size_change * ratio) / 2,
+                -(img_bitmap.width + ctx.size_change) / 2,
+                -(img_bitmap.height + ctx.size_change * ratio) / 2,
                 img_bitmap.width + ctx.size_change,
                 img_bitmap.height + ctx.size_change * ratio,
             )
             buffer_ctx.drawImage(
                 img_bitmap,
-                x - (img_bitmap.width + ctx.size_change) / 2,
-                y - (img_bitmap.height + ctx.size_change * ratio) / 2,
+                -(img_bitmap.width + ctx.size_change) / 2,
+                -(img_bitmap.height + ctx.size_change * ratio) / 2,
                 img_bitmap.width + ctx.size_change,
                 img_bitmap.height + ctx.size_change * ratio,
             )
         else:
             buffer_ctx.strokeRect(
-                x - (img_bitmap.width + ctx.size_change * ratio) / 2,
-                y - (img_bitmap.height + ctx.size_change) / 2,
+                -(img_bitmap.width + ctx.size_change * ratio) / 2,
+                -(img_bitmap.height + ctx.size_change) / 2,
                 img_bitmap.width + ctx.size_change * ratio,
                 img_bitmap.height + ctx.size_change,
             )
             buffer_ctx.drawImage(
                 img_bitmap,
-                x - (img_bitmap.width + ctx.size_change * ratio) / 2,
-                y - (img_bitmap.height + ctx.size_change) / 2,
+                -(img_bitmap.width + ctx.size_change * ratio) / 2,
+                -(img_bitmap.height + ctx.size_change) / 2,
                 img_bitmap.width + ctx.size_change * ratio,
                 img_bitmap.height + ctx.size_change,
             )
+        buffer_ctx.rotate(-ctx.rotation)
+        buffer_ctx.translate(
+            -x,
+            -y,
+        )
 
     if ctx.moving_clip:
         createImageBitmap(ctx.prev_data).then(draw_clip)
         return True
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
     if ctx.moving_image:
+        buffer_ctx.translate(
+            x,
+            y,
+        )
+        buffer_ctx.rotate(ctx.rotation)
         ratio = ctx.current_img.width / ctx.current_img.height
         if ctx.current_img.width < ctx.current_img.height:
             buffer_ctx.drawImage(
                 ctx.current_img,
-                x - (ctx.current_img.width + ctx.size_change) / 2,
-                y - (ctx.current_img.height + ctx.size_change * ratio) / 2,
+                -(ctx.current_img.width + ctx.size_change) / 2,
+                -(ctx.current_img.height + ctx.size_change * ratio) / 2,
                 ctx.current_img.width + ctx.size_change,
                 ctx.current_img.height + ctx.size_change * ratio,
             )
         else:
             buffer_ctx.drawImage(
                 ctx.current_img,
-                x - (ctx.current_img.width + ctx.size_change * ratio) / 2,
-                y - (ctx.current_img.height + ctx.size_change) / 2,
+                -(ctx.current_img.width + ctx.size_change * ratio) / 2,
+                -(ctx.current_img.height + ctx.size_change) / 2,
                 ctx.current_img.width + ctx.size_change * ratio,
                 ctx.current_img.height + ctx.size_change,
             )
+
+        buffer_ctx.rotate(-ctx.rotation)
+        buffer_ctx.translate(
+            -x,
+            -y,
+        )
         return True
     if ctx.writing_text and not ctx.text_placed:
+        buffer_ctx.translate(
+            x,
+            y,
+        )
+        buffer_ctx.rotate(ctx.rotation)
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
-            x - text_dimensions.width / 2,
-            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+            -text_dimensions.width / 2,
+            (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+        )
+        buffer_ctx.rotate(-ctx.rotation)
+        buffer_ctx.translate(
+            -x,
+            -y,
         )
         return True
     if ctx.clipping:
-        ctx.beginPath()
         buffer_ctx.strokeRect(
             ctx.start_coords[0],
             ctx.start_coords[1],
@@ -240,6 +276,18 @@ def show_action_icon(x: float, y: float) -> bool:
             y - ctx.start_coords[1],
         )
         return True
+    regular_icon_show(x, y)
+    return False
+
+
+def regular_icon_show(x: float, y: float) -> None:
+    """Show preview for regular actions.
+
+    Args:
+        x (float): X coordinate
+        y (float): Y coordinate
+
+    """
     if ctx.type == "smooth":
         buffer_ctx.beginPath()
         buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)  # Put a dot here
@@ -255,7 +303,6 @@ def show_action_icon(x: float, y: float) -> bool:
             buffer_ctx.stroke()
             buffer_ctx.lineWidth = prev_width
             buffer_ctx.fillStyle = prev_fill
-    return False
 
 
 def get_smudge_data(x: float, y: float) -> ImageData:
@@ -353,7 +400,7 @@ def mouse_tracker(event: MouseEvent) -> None:
 
     """
     x, y = get_canvas_coords(event)
-
+    ctx.current_position = [x, y]
     if show_action_icon(x, y):
         return
     if not ctx.text_placed:
@@ -519,41 +566,33 @@ def special_actions(x: float, y: float) -> bool:
 
     """
     if ctx.moving_image:
-        ctx.moving_image = False
-        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ratio = ctx.current_img.width / ctx.current_img.height
-        if ctx.current_img.width < ctx.current_img.height:
-            ctx.drawImage(
-                ctx.current_img,
-                x - (ctx.current_img.width + ctx.size_change) / 2,
-                y - (ctx.current_img.height + ctx.size_change * ratio) / 2,
-                ctx.current_img.width + ctx.size_change,
-                ctx.current_img.height + ctx.size_change * ratio,
-            )
-        else:
-            ctx.drawImage(
-                ctx.current_img,
-                x - (ctx.current_img.width + ctx.size_change * ratio) / 2,
-                y - (ctx.current_img.height + ctx.size_change) / 2,
-                ctx.current_img.width + ctx.size_change * ratio,
-                ctx.current_img.height + ctx.size_change,
-            )
-        ctx.globalCompositeOperation = ctx.prev_operation
-        ctx.size_change = 0
-        save_history()
+        draw_image(x, y)
 
         return True
     if ctx.writing_text:
         ctx.text_placed = True
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.translate(
+            x,
+            y,
+        )
+        ctx.rotate(ctx.rotation)
         text_dimensions = ctx.measureText(ctx.text_value)
 
         ctx.fillText(
             ctx.text_value,
-            x - text_dimensions.width / 2,
-            y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+            -text_dimensions.width / 2,
+            (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
         )
         ctx.globalCompositeOperation = ctx.prev_operation
+
+        ctx.rotate(-ctx.rotation)
+        ctx.translate(
+            -x,
+            -y,
+        )
+
+        ctx.rotation = 0
         return True
 
     if ctx.moving_clip:
@@ -561,26 +600,38 @@ def special_actions(x: float, y: float) -> bool:
 
         def draw_clip(img_bitmap: ImageBitmap) -> None:
             buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+            ctx.translate(
+                x,
+                y,
+            )
+            ctx.rotate(ctx.rotation)
             ratio = img_bitmap.width / img_bitmap.height
 
             if img_bitmap.width < img_bitmap.height:
                 ctx.drawImage(
                     img_bitmap,
-                    x - (img_bitmap.width + ctx.size_change) / 2,
-                    y - (img_bitmap.height + ctx.size_change * ratio) / 2,
+                    -(img_bitmap.width + ctx.size_change) / 2,
+                    -(img_bitmap.height + ctx.size_change * ratio) / 2,
                     img_bitmap.width + ctx.size_change,
                     img_bitmap.height + ctx.size_change * ratio,
                 )
             else:
                 ctx.drawImage(
                     img_bitmap,
-                    x - (img_bitmap.width + ctx.size_change * ratio) / 2,
-                    y - (img_bitmap.height + ctx.size_change) / 2,
+                    -(img_bitmap.width + ctx.size_change * ratio) / 2,
+                    -(img_bitmap.height + ctx.size_change) / 2,
                     img_bitmap.width + ctx.size_change * ratio,
                     img_bitmap.height + ctx.size_change,
                 )
 
             ctx.size_change = 0
+
+            ctx.rotate(-ctx.rotation)
+            ctx.translate(
+                -x,
+                -y,
+            )
+            ctx.rotation = 0
             save_history()
 
         createImageBitmap(ctx.prev_data).then(draw_clip)
@@ -594,6 +645,49 @@ def special_actions(x: float, y: float) -> bool:
 
         return True
     return False
+
+
+def draw_image(x: float, y: float) -> None:
+    """Draws the uploaded image to the canvas.
+
+    Args:
+        x (float): X coordinate
+        y (float): Y coordinate
+
+    """
+    ctx.moving_image = False
+    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.translate(
+        x,
+        y,
+    )
+    ctx.rotate(ctx.rotation)
+    ratio = ctx.current_img.width / ctx.current_img.height
+    if ctx.current_img.width < ctx.current_img.height:
+        ctx.drawImage(
+            ctx.current_img,
+            -(ctx.current_img.width + ctx.size_change) / 2,
+            -(ctx.current_img.height + ctx.size_change * ratio) / 2,
+            ctx.current_img.width + ctx.size_change,
+            ctx.current_img.height + ctx.size_change * ratio,
+        )
+    else:
+        ctx.drawImage(
+            ctx.current_img,
+            -(ctx.current_img.width + ctx.size_change * ratio) / 2,
+            -(ctx.current_img.height + ctx.size_change) / 2,
+            ctx.current_img.width + ctx.size_change * ratio,
+            ctx.current_img.height + ctx.size_change,
+        )
+    ctx.globalCompositeOperation = ctx.prev_operation
+    ctx.size_change = 0
+    ctx.rotate(-ctx.rotation)
+    ctx.translate(
+        -x,
+        -y,
+    )
+    ctx.rotation = 0
+    save_history()
 
 
 @when("colourChange", "body")
@@ -805,9 +899,9 @@ def handle_scroll(e: Event) -> None:
     x, y = get_canvas_coords(e)
     if ctx.writing_text:
         # ctx.text_settings["size"] is an int
-        if e.deltaY > 0 and ctx.text_settings["size"] > MIN_TEXT_SIZE:  # pyright: ignore[reportOperatorIssue]
+        if e.deltaY > 0 and ctx.text_settings["size"] > MIN_RESIZE_SIZE:  # pyright: ignore[reportOperatorIssue]
             ctx.text_settings["size"] -= 5  # pyright: ignore[reportOperatorIssue]
-        elif e.deltaY < 0 and ctx.text_settings["size"] < MAX_TEXT_SIZE:  # pyright: ignore[reportOperatorIssue]
+        elif e.deltaY < 0 and ctx.text_settings["size"] < MAX_RESIZE_SIZE:  # pyright: ignore[reportOperatorIssue]
             ctx.text_settings["size"] += 5  # pyright: ignore[reportOperatorIssue]
         ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
         buffer_ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
@@ -815,34 +909,87 @@ def handle_scroll(e: Event) -> None:
     elif ctx.moving_image:
         if (
             e.deltaY > 0
-            and min(ctx.current_img.width + ctx.size_change, ctx.current_img.height + ctx.size_change) > MIN_TEXT_SIZE
+            and min(ctx.current_img.width + ctx.size_change, ctx.current_img.height + ctx.size_change)
+            > MIN_RESIZE_SIZE
         ):
             ctx.size_change -= 10
         elif (
             e.deltaY < 0
             and max(ctx.current_img.width + ctx.size_change, ctx.current_img.height + ctx.size_change)
-            < MAX_TEXT_SIZE * 100
+            < MAX_RESIZE_SIZE * 100
         ):
             ctx.size_change += 10
         show_action_icon(x, y)
     elif ctx.moving_clip:
         if (
             e.deltaY > 0
-            and min(ctx.prev_data.width + ctx.size_change, ctx.prev_data.height + ctx.size_change) > MIN_TEXT_SIZE
+            and min(ctx.prev_data.width + ctx.size_change, ctx.prev_data.height + ctx.size_change) > MIN_RESIZE_SIZE
         ):
             ctx.size_change -= 10
         elif (
             e.deltaY < 0
             and max(ctx.prev_data.width + ctx.size_change, ctx.prev_data.height + ctx.size_change)
-            < MAX_TEXT_SIZE * 100
+            < MAX_RESIZE_SIZE * 100
         ):
             ctx.size_change += 10
         show_action_icon(x, y)
 
 
+@create_proxy
+def keydown_event(event: KeyboardEvent) -> None:
+    """Handle keydown events.
+
+    Args:
+        event (KeyboardEvent): Keydown event
+
+    """
+    if event.key == "Backspace":
+        if ctx.moving_image:
+            ctx.moving_image = False
+            ctx.globalCompositeOperation = ctx.prev_operation
+            ctx.size_change = 0
+        elif ctx.moving_clip:
+            ctx.moving_clip = False
+            ctx.setLineDash([])
+            buffer_ctx.setLineDash([])
+            ctx.strokeStyle = ctx.prev_stroke_style
+            ctx.lineWidth = ctx.prev_line_width
+
+            buffer_ctx.strokeStyle = ctx.prev_stroke_style
+            buffer_ctx.lineWidth = ctx.prev_line_width
+        elif ctx.writing_text:
+            ctx.writing_text = False
+            ctx.text_placed = True
+            ctx.globalCompositeOperation = ctx.prev_operation
+        show_action_icon(ctx.current_position[0], ctx.current_position[1])
+    elif event.key == "Alt":
+        ctx.is_rotating = True
+    elif event.key == "ArrowLeft" and ctx.is_rotating and (ctx.moving_image or ctx.moving_clip or ctx.writing_text):
+        ctx.rotation -= Math.PI / 180 * ROTATION_SPEED
+        show_action_icon(ctx.current_position[0], ctx.current_position[1])
+    elif event.key == "ArrowRight" and ctx.is_rotating and (ctx.moving_image or ctx.moving_clip or ctx.writing_text):
+        ctx.rotation += Math.PI / 180 * ROTATION_SPEED
+        show_action_icon(ctx.current_position[0], ctx.current_position[1])
+
+
+@create_proxy
+def keyup_event(event: KeyboardEvent) -> None:
+    """Handle keyup event.
+
+    Args:
+        event (KeyboardEvent): Keyup event
+
+    """
+    if event.key == "Alt":
+        ctx.is_rotating = False
+
+
 window.addEventListener("resize", resize)
 
 ctx.current_img.addEventListener("load", resize)
+
+document.addEventListener("keydown", keydown_event)
+document.addEventListener("keyup", keyup_event)
 
 # The wheel event is for most browsers. The mousewheel event is deprecated
 # but the wheel event is not supported by Safari and Webviewer on iOS.
