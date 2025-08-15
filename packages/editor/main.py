@@ -251,32 +251,34 @@ with ui.row().style("display: flex; width: 100%;"):
             label="Text",
             placeholder="Start typing",
         ).props("id='text-input'")
-        bold_checkbox = ui.checkbox("Bold").props("id='bold-text'")
-        italics_checkbox = ui.checkbox("Italics").props("id='italics-text'")
-        font_family = ui.select(
-            [
-                "Arial",
-                "Verdana",
-                "Tahoma",
-                "Trebuchet MS",
-                "Times New Roman",
-                "Georgia",
-                "Garamond",
-                "Courier New",
-                "Brush Script MT",
-            ],
-            value="Arial",
-        ).props("id='text-font-family'")
-        add_text_button = ui.button(
-            "Add to canvas",
-            on_click=lambda: (
-                ui.run_javascript("""
-                const event = new Event("addText");
-                document.querySelector("#text-input").dispatchEvent(event);
-            """),
-                text_input.set_value(""),
-            ),
-        )
+        with ui.row():
+            bold_checkbox = ui.checkbox("Bold").props("id='bold-text'")
+            italics_checkbox = ui.checkbox("Italics").props("id='italics-text'")
+        with ui.row():
+            font_family = ui.select(
+                [
+                    "Arial",
+                    "Verdana",
+                    "Tahoma",
+                    "Trebuchet MS",
+                    "Times New Roman",
+                    "Georgia",
+                    "Garamond",
+                    "Courier New",
+                    "Brush Script MT",
+                ],
+                value="Arial",
+            ).props("id='text-font-family'")
+            add_text_button = ui.button(
+                "Add to canvas",
+                on_click=lambda: (
+                    ui.run_javascript("""
+                    const event = new Event("addText");
+                    document.querySelector("#text-input").dispatchEvent(event);
+                """),
+                    text_input.set_value(""),
+                ),
+            )
 
 
 ui.add_body_html("""

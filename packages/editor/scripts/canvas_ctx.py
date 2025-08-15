@@ -108,6 +108,7 @@ class CanvasContext:
     start_coords: list[float]
     prev_stroke_style: str
     prev_line_width: int
+    size_change: int
 
     # Builtin attributes
     canvas: Any
