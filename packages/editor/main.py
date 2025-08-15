@@ -166,9 +166,9 @@ def upload_image(e: UploadEventArguments) -> None:
 
 def switch_action(e: ValueChangeEventArguments) -> None:
     """Fire switch action event."""
-    if type_toggle.value == "pixel" and e.value == "smudge":
+    if type_toggle.value == "pixel" and e.value in ("smudge", "clip"):
         action_toggle.value = "pen"
-        ui.notify("You cannot select the smudge action while in pixel mode.", type="negative")
+        ui.notify("You cannot select the smudge or select action while in pixel mode.", type="negative")
         return
     ui.run_javascript(f"""
         const event = new Event('change');
@@ -187,14 +187,18 @@ with ui.row().style("display: flex; width: 100%;"):
         ui.switch("Dark mode").bind_value(dark)
         ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
         ui.button("Download").props("id='download-button'")
-        file_uploader = ui.upload(
-            label="Upload file",
-            auto_upload=True,
-            on_upload=upload_image,
-            on_rejected=lambda _: ui.notify("There was an issue with the upload."),
-        ).props("accept='image/*' id='file-input'")
+        file_uploader = (
+            ui.upload(
+                label="Upload file",
+                auto_upload=True,
+                on_upload=upload_image,
+                on_rejected=lambda _: ui.notify("There was an issue with the upload."),
+            )
+            .props("accept='image/*' id='file-input'")
+            .style("width: 100%;")
+        )
         type_toggle = ui.toggle(
-            {"smooth": "✍️", "pixel": "👾"},
+            {"smooth": "✍️", "pixel": "👾", "clip": "📎"},
             value="smooth",
             on_change=lambda e: change_type(mode_value=e.value),
         ).props("id='type-select'")

@@ -73,6 +73,7 @@ ctx.writing_text = False
 ctx.text_placed = True
 ctx.prev_operation = "source-over"
 ctx.text_settings = {"bold": False, "italics": False, "size": 50, "font-family": "Arial"}
+ctx.clipping = False
 
 
 buffer_ctx.imageSmoothingEnabled = False
