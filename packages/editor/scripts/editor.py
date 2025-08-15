@@ -78,6 +78,7 @@ ctx.moving_clip = False
 ctx.start_coords = [0, 0]
 ctx.prev_stroke_style = "black"
 ctx.prev_line_width = 5
+ctx.size_change = 0
 
 
 buffer_ctx.imageSmoothingEnabled = False
@@ -182,9 +183,25 @@ def show_action_icon(x: float, y: float) -> bool:
         return True
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
     if ctx.moving_image:
-        buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        ratio = ctx.current_img.width / ctx.current_img.height
+        if ctx.current_img.width < ctx.current_img.height:
+            buffer_ctx.drawImage(
+                ctx.current_img,
+                x - (ctx.current_img.width + ctx.size_change) / 2,
+                y - (ctx.current_img.height + ctx.size_change * ratio) / 2,
+                ctx.current_img.width + ctx.size_change,
+                ctx.current_img.height + ctx.size_change * ratio,
+            )
+        else:
+            buffer_ctx.drawImage(
+                ctx.current_img,
+                x - (ctx.current_img.width + ctx.size_change * ratio) / 2,
+                y - (ctx.current_img.height + ctx.size_change) / 2,
+                ctx.current_img.width + ctx.size_change * ratio,
+                ctx.current_img.height + ctx.size_change,
+            )
         return True
-    if ctx.writing_text:
+    if ctx.writing_text and not ctx.text_placed:
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
@@ -482,8 +499,25 @@ def special_actions(x: float, y: float) -> bool:
     if ctx.moving_image:
         ctx.moving_image = False
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
+        ratio = ctx.current_img.width / ctx.current_img.height
+        if ctx.current_img.width < ctx.current_img.height:
+            ctx.drawImage(
+                ctx.current_img,
+                x - (ctx.current_img.width + ctx.size_change) / 2,
+                y - (ctx.current_img.height + ctx.size_change * ratio) / 2,
+                ctx.current_img.width + ctx.size_change,
+                ctx.current_img.height + ctx.size_change * ratio,
+            )
+        else:
+            ctx.drawImage(
+                ctx.current_img,
+                x - (ctx.current_img.width + ctx.size_change * ratio) / 2,
+                y - (ctx.current_img.height + ctx.size_change) / 2,
+                ctx.current_img.width + ctx.size_change * ratio,
+                ctx.current_img.height + ctx.size_change,
+            )
         ctx.globalCompositeOperation = ctx.prev_operation
+        ctx.size_change = 0
         save_history()
 
         return True
@@ -737,6 +771,21 @@ def handle_scroll(e: Event) -> None:
         ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
         buffer_ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
         show_action_icon(x, y)
+    elif ctx.moving_image:
+        if (
+            e.deltaY > 0
+            and min(ctx.current_img.width + ctx.size_change, ctx.current_img.height + ctx.size_change) > MIN_TEXT_SIZE
+        ):
+            ctx.size_change -= 5
+        elif (
+            e.deltaY < 0
+            and max(ctx.current_img.width + ctx.size_change, ctx.current_img.height + ctx.size_change)
+            < MAX_TEXT_SIZE * 100
+        ):
+            ctx.size_change += 5
+        show_action_icon(x, y)
+    elif ctx.moving_clip:
+        pass
 
 
 window.addEventListener("resize", resize)
