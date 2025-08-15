@@ -90,6 +90,8 @@ buffer_ctx.font = f"{ctx.text_settings['size']}px {ctx.text_settings['font-famil
 ctx.history = []
 ctx.history_index = -1
 MAX_HISTORY = 50
+MIN_TEXT_SIZE = 20
+MAX_TEXT_SIZE = 200
 
 PIXEL_SIZE = 8
 SMUDGE_BLEND_FACTOR = 0.5
@@ -317,6 +319,7 @@ def mouse_tracker(event: MouseEvent) -> None:
         return
     if not ctx.text_placed:
         text_dimensions = ctx.measureText(ctx.text_value)
+
         buffer_ctx.fillText(
             ctx.text_value,
             x - text_dimensions.width / 2,
@@ -488,6 +491,7 @@ def special_actions(x: float, y: float) -> bool:
         ctx.text_placed = True
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         text_dimensions = ctx.measureText(ctx.text_value)
+
         ctx.fillText(
             ctx.text_value,
             x - text_dimensions.width / 2,
@@ -723,7 +727,16 @@ def handle_scroll(e: Event) -> None:
 
     """
     e.preventDefault()
-    print(e.deltaY)
+    x, y = get_canvas_coords(e)
+    if ctx.writing_text:
+        # ctx.text_settings["size"] is an int
+        if e.deltaY > 0 and ctx.text_settings["size"] > MIN_TEXT_SIZE:  # pyright: ignore[reportOperatorIssue]
+            ctx.text_settings["size"] -= 5  # pyright: ignore[reportOperatorIssue]
+        elif e.deltaY < 0 and ctx.text_settings["size"] < MAX_TEXT_SIZE:  # pyright: ignore[reportOperatorIssue]
+            ctx.text_settings["size"] += 5  # pyright: ignore[reportOperatorIssue]
+        ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
+        buffer_ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
+        show_action_icon(x, y)
 
 
 window.addEventListener("resize", resize)
