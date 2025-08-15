@@ -198,7 +198,7 @@ with ui.row().style("display: flex; width: 100%;"):
             .style("width: 100%;")
         )
         type_toggle = ui.toggle(
-            {"smooth": "✍️", "pixel": "👾", "clip": "📎"},
+            {"smooth": "✍️", "pixel": "👾"},
             value="smooth",
             on_change=lambda e: change_type(mode_value=e.value),
         ).props("id='type-select'")
@@ -216,18 +216,14 @@ with ui.row().style("display: flex; width: 100%;"):
         with ui.row():
             ui.button("Undo").props("id='undo-button'")
             ui.button("Redo").props("id='redo-button'")
-        action_options = {
-            "pen": "🖊️",
-            "eraser": "🧽",
-            "smudge": "💨",
-        }
+        action_options = {"pen": "🖊️", "eraser": "🧽", "smudge": "💨", "clip": "📎"}
 
         action_toggle = ui.toggle(
             action_options,
             value="pen",
             on_change=switch_action,
         ).props(
-            "id='action-select' class='keyboard-shortcuts' shortcut_data='toggle,p:🖊️,e:🧽,s:💨'",
+            "id='action-select' class='keyboard-shortcuts' shortcut_data='toggle,p:🖊️,e:🧽,s:💨,c:📎'",
         )
         ui.separator().classes("w-full")
         with ui.row():
@@ -237,7 +233,7 @@ with ui.row().style("display: flex; width: 100%;"):
                     ui.label(colour)
                     colour_label = ui.label("00")
                     colour_values.append(colour_label)
-        ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,c'")
+        ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,z'")
         ui.separator().classes("w-full")
         width_input = ui.number(label="Line Width", min=1, max=50, step=1)
         width_slider = ui.slider(

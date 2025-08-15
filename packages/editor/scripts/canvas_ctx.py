@@ -1,3 +1,5 @@
+# There are a lot of NOQAs in this file as these are typehints based on JS classes/methods.
+
 from typing import Any, Literal
 
 from js import (  # pyright: ignore[reportMissingImports]
@@ -19,6 +21,13 @@ class DOMRect:
     width: float
     x: float
     y: float
+
+
+class ImageBitmap:
+    """Image bitmap typehint."""
+
+    height: float
+    width: float
 
 
 class TextMetrics:
@@ -95,6 +104,10 @@ class CanvasContext:
     history_index: int
     text_placed: bool
     clipping: bool
+    moving_clip: bool
+    start_coords: list[float]
+    prev_stroke_style: str
+    prev_line_width: int
 
     # Builtin attributes
     canvas: Any
@@ -407,9 +420,9 @@ class CanvasContext:
         """Add quadraticCurveTo."""
         self.ctx.quadraticCurveTo()
 
-    def rect(self, *_: list) -> None:
+    def rect(self, x: float, y: float, width: float, height: float) -> None:
         """Set the rect."""
-        self.ctx.rect()
+        self.ctx.rect(x, y, width, height)
 
     def reset(self) -> None:
         """Add reset."""
@@ -439,9 +452,9 @@ class CanvasContext:
         """Add scale."""
         self.ctx.scale(x, y)
 
-    def setLineDash(self) -> None:  # noqa: N802
+    def setLineDash(self, segments: list[float]) -> None:  # noqa: N802
         """Add setLineDash."""
-        self.ctx.setLineDash()
+        self.ctx.setLineDash(segments)
 
     def setTransform(self) -> None:  # noqa: N802
         """Add setTransform."""
@@ -451,9 +464,9 @@ class CanvasContext:
         """Add stroke."""
         self.ctx.stroke()
 
-    def strokeRect(self) -> None:  # noqa: N802
+    def strokeRect(self, x: float, y: float, width: float, height: float) -> None:  # noqa: N802
         """Add strokeRect."""
-        self.ctx.strokeRect()
+        self.ctx.strokeRect(x, y, width, height)
 
     def strokeText(self) -> None:  # noqa: N802
         """Add strokeText."""

@@ -1,5 +1,5 @@
 # This should be under the other imports but because it isn't imported in the traditional way, it's above them.
-from canvas_ctx import CanvasContext  # pyright: ignore[reportMissingImports] #
+from canvas_ctx import CanvasContext, ImageBitmap  # pyright: ignore[reportMissingImports] #
 
 # Following imports have the ignore flag as they are not pip installed
 from js import (  # pyright: ignore[reportMissingImports]
@@ -74,6 +74,10 @@ ctx.text_placed = True
 ctx.prev_operation = "source-over"
 ctx.text_settings = {"bold": False, "italics": False, "size": 50, "font-family": "Arial"}
 ctx.clipping = False
+ctx.moving_clip = False
+ctx.start_coords = [0, 0]
+ctx.prev_stroke_style = "black"
+ctx.prev_line_width = 5
 
 
 buffer_ctx.imageSmoothingEnabled = False
@@ -155,6 +159,21 @@ def show_action_icon(x: float, y: float) -> bool:
         bool: If True is returned mousemove doesn't do anything else
 
     """
+
+    def draw_clip(img_bitmap: ImageBitmap) -> None:
+        buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        buffer_ctx.strokeRect(
+            x - img_bitmap.width / 2,
+            y - img_bitmap.height / 2,
+            img_bitmap.width,
+            img_bitmap.height,
+        )
+        buffer_ctx.drawImage(img_bitmap, x - img_bitmap.width / 2, y - img_bitmap.height / 2)
+
+    if ctx.moving_clip:
+        createImageBitmap(ctx.prev_data).then(draw_clip)
+        return True
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
     if ctx.moving_image:
         buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
@@ -165,6 +184,15 @@ def show_action_icon(x: float, y: float) -> bool:
             ctx.text_value,
             x - text_dimensions.width / 2,
             y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
+        )
+        return True
+    if ctx.clipping:
+        ctx.beginPath()
+        buffer_ctx.strokeRect(
+            ctx.start_coords[0],
+            ctx.start_coords[1],
+            x - ctx.start_coords[0],
+            y - ctx.start_coords[1],
         )
         return True
     if ctx.type == "smooth":
@@ -283,7 +311,7 @@ def mouse_tracker(event: MouseEvent) -> None:
 
     if show_action_icon(x, y):
         return
-    if not (ctx.text_placed):
+    if not ctx.text_placed:
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
@@ -294,16 +322,25 @@ def mouse_tracker(event: MouseEvent) -> None:
         return
     if not ctx.drawing:
         return
+    draw_action(event, x, y)
 
+
+def draw_action(event: MouseEvent, x: float, y: float) -> None:
+    """Draw the event on the screen.
+
+    Args:
+        event (MouseEvent): Mouse event
+        x (float): X coordinate
+        y (float): Y coordinate
+
+    """
     match ctx.type:
         case "smooth":
             if ctx.action == "smudge":
                 draw_smudge(event)
-
-            else:  # this is "pen" or "eraser"
+            elif ctx.action in ("pen", "eraser"):  # this is "pen" or "eraser"
                 ctx.lineTo(x, y)
                 ctx.stroke()
-
         case "pixel":
             if ctx.action == "pen":
                 draw_pixel(x, y)
@@ -319,11 +356,37 @@ def stop_path(_: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-    if ctx.text_placed:
-        ctx.writing_text = False
     if ctx.drawing:
         ctx.drawing = False
         save_history()
+
+
+@when("mouseup", "#image-canvas")
+def drop_media(event: MouseEvent) -> None:
+    """Place text or clipping.
+
+    Args:
+        event (MouseEvent): Mouse event
+
+    """
+    if ctx.text_placed:
+        ctx.writing_text = False
+    if ctx.clipping:
+        ctx.clipping = False
+        ctx.moving_clip = True
+        x, y = get_canvas_coords(event)
+        ctx.prev_data = ctx.getImageData(
+            ctx.start_coords[0],
+            ctx.start_coords[1],
+            x - ctx.start_coords[0],
+            y - ctx.start_coords[1],
+        )
+        ctx.clearRect(
+            ctx.start_coords[0],
+            ctx.start_coords[1],
+            x - ctx.start_coords[0],
+            y - ctx.start_coords[1],
+        )
 
 
 @when("mouseenter", "#image-canvas")
@@ -371,13 +434,52 @@ def canvas_click(event: MouseEvent) -> None:
     if event.button != 0:
         return
     x, y = get_canvas_coords(event)
+    if special_actions(x, y):
+        return
+    if ctx.type == "smooth":
+        if ctx.action == "clip" and not ctx.moving_clip:
+            ctx.clipping = True
+            ctx.start_coords = [x, y]
+            ctx.setLineDash([2, 10])
+            buffer_ctx.setLineDash([2, 10])
+            ctx.prev_stroke_style = ctx.strokeStyle
+            ctx.prev_line_width = ctx.lineWidth
+
+            ctx.strokeStyle = "black"
+            ctx.lineWidth = 5
+            buffer_ctx.strokeStyle = "black"
+            buffer_ctx.lineWidth = 5
+        else:
+            ctx.beginPath()
+            ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
+            if ctx.action in ("pen", "eraser"):
+                ctx.stroke()
+    elif ctx.type == "pixel":
+        if ctx.action == "pen":
+            draw_pixel(x, y)
+        elif ctx.action == "eraser":
+            ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+
+
+def special_actions(x: float, y: float) -> bool:
+    """Draw special action on canvas.
+
+    Args:
+        x (float): X coordinate
+        y (float): Y coordinate
+
+    Returns:
+        bool: Whether to skip the regular drawing process or not
+
+    """
     if ctx.moving_image:
         ctx.moving_image = False
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         ctx.globalCompositeOperation = ctx.prev_operation
         save_history()
-    elif ctx.writing_text:
+        return True
+    if ctx.writing_text:
         ctx.text_placed = True
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
         text_dimensions = ctx.measureText(ctx.text_value)
@@ -387,16 +489,26 @@ def canvas_click(event: MouseEvent) -> None:
             y + (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
         )
         ctx.globalCompositeOperation = ctx.prev_operation
-    elif ctx.type == "smooth":
-        ctx.beginPath()
-        ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
-        if ctx.action in ("pen", "eraser"):
-            ctx.stroke()
-    elif ctx.type == "pixel":
-        if ctx.action == "pen":
-            draw_pixel(x, y)
-        elif ctx.action == "eraser":
-            ctx.clearRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
+        return True
+
+    if ctx.moving_clip:
+        ctx.moving_clip = False
+
+        def draw_clip(img_bitmap: ImageBitmap) -> None:
+            buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+            ctx.drawImage(img_bitmap, x - img_bitmap.width / 2, y - img_bitmap.height / 2)
+
+        createImageBitmap(ctx.prev_data).then(draw_clip)
+        ctx.setLineDash([])
+        buffer_ctx.setLineDash([])
+        ctx.strokeStyle = ctx.prev_stroke_style
+        ctx.lineWidth = ctx.prev_line_width
+
+        buffer_ctx.strokeStyle = ctx.prev_stroke_style
+        buffer_ctx.lineWidth = ctx.prev_line_width
+        save_history()
+        return True
+    return False
 
 
 @when("colourChange", "body")
@@ -440,6 +552,8 @@ def action_change(event: Event) -> None:
         case "eraser":
             ctx.globalCompositeOperation = "destination-out"
         case "smudge":
+            ctx.globalCompositeOperation = "source-over"
+        case "clip":
             ctx.globalCompositeOperation = "source-over"
 
 
@@ -487,6 +601,7 @@ def type_change(event: Event) -> None:
     # As far as I know there's no way to check when we change from pixel to smooth in the history so there's
     # no way to switch the modes in the UI. Hence I've decided to just clear the history instead.
     ctx.history.clear()
+    ctx.history_index = 0
     save_history()
 
 
