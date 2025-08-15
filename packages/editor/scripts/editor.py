@@ -60,7 +60,7 @@ ctx.strokeStyle = "black"
 ctx.lineWidth = 5
 ctx.lineCap = "round"
 ctx.lineJoin = "round"
-ctx.font = "50px Brush Script MT"
+ctx.font = "50px Arial"
 
 # Custom attributes attached so we don't need to use global vars
 ctx.drawing = False
@@ -483,6 +483,11 @@ def type_change(event: Event) -> None:
 
     resize(event, keep_content=False)
 
+    # As far as I know there's no way to check when we change from pixel to smooth in the history so there's
+    # no way to switch the modes in the UI. Hence I've decided to just clear the history instead.
+    ctx.history.clear()
+    save_history()
+
 
 @when("reset", "body")
 def reset_board(_: Event) -> None:
@@ -564,6 +569,7 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
 
     ctx.lineWidth = line_width
     ctx.strokeStyle = stroke_style
+    ctx.fillStyle = stroke_style
 
     ctx.imageSmoothingEnabled = False
     ctx.lineCap = "round"
@@ -580,6 +586,7 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
     buffer_ctx.imageSmoothingEnabled = False
     buffer_ctx.strokeStyle = stroke_style
     buffer_ctx.lineWidth = line_width
+    buffer_ctx.fillStyle = stroke_style
     buffer_ctx.lineCap = "round"
     buffer_ctx.lineJoin = "round"
     buffer_ctx.font = font

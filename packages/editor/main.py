@@ -98,7 +98,12 @@ def change_type(*, mode_value: bool = False) -> None:
     if global_vars["type_programatically_changed"]:
         return
     with ui.dialog() as dialog, ui.card():
-        ui.label("Are you sure you want to change the drawing mode? This will clear the canvas.")
+        ui.label(
+            """
+            Are you sure you want to change the drawing mode? This will clear the canvas.
+            You will not be able to undo this.
+            """,
+        ).style("text-align: center;")
         with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
             ui.button(
                 "Cancel",
