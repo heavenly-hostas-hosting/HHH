@@ -6,6 +6,8 @@ import random
 from nicegui import app, ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
+SPIN_COUNT = 10
+
 app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
 ui.add_head_html("""
@@ -96,7 +98,12 @@ def change_type(*, mode_value: bool = False) -> None:
     if global_vars["type_programatically_changed"]:
         return
     with ui.dialog() as dialog, ui.card():
-        ui.label("Are you sure you want to change the drawing mode? This will clear the canvas.")
+        ui.label(
+            """
+            Are you sure you want to change the drawing mode? This will clear the canvas.
+            You will not be able to undo this.
+            """,
+        ).style("text-align: center;")
         with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
             ui.button(
                 "Cancel",
@@ -128,11 +135,11 @@ Hex = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E"
 async def spin() -> None:
     """Change RGB values."""
     hex_value = ""
-    for x in range(10):
+    for x in range(SPIN_COUNT):
         for y in range(3):
-            text = random.choice(Hex) + random.choice(Hex)  # noqa: S311
+            text = random.choice(Hex) + random.choice(Hex)  # noqa: S311 This isn't for cryptography
             colour_values[y].text = text
-            if x == 9:  # noqa: PLR2004
+            if x == SPIN_COUNT - 1:
                 hex_value += text
         await asyncio.sleep(0.1)
     ui.run_javascript(f"""
@@ -159,9 +166,9 @@ def upload_image(e: UploadEventArguments) -> None:
 
 def switch_action(e: ValueChangeEventArguments) -> None:
     """Fire switch action event."""
-    if type_toggle.value == "pixel" and e.value == "smudge":
+    if type_toggle.value == "pixel" and e.value in ("smudge", "clip"):
         action_toggle.value = "pen"
-        ui.notify("You cannot select the smudge action while in pixel mode.", type="negative")
+        ui.notify("You cannot select the smudge or select action while in pixel mode.", type="negative")
         return
     ui.run_javascript(f"""
         const event = new Event('change');
@@ -180,12 +187,16 @@ with ui.row().style("display: flex; width: 100%;"):
         ui.switch("Dark mode").bind_value(dark)
         ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
         ui.button("Download").props("id='download-button'")
-        file_uploader = ui.upload(
-            label="Upload file",
-            auto_upload=True,
-            on_upload=upload_image,
-            on_rejected=lambda _: ui.notify("There was an issue with the upload."),
-        ).props("accept='image/*' id='file-input'")
+        file_uploader = (
+            ui.upload(
+                label="Upload file",
+                auto_upload=True,
+                on_upload=upload_image,
+                on_rejected=lambda _: ui.notify("There was an issue with the upload."),
+            )
+            .props("accept='image/*' id='file-input'")
+            .style("width: 100%;")
+        )
         type_toggle = ui.toggle(
             {"smooth": "✍️", "pixel": "👾"},
             value="smooth",
@@ -203,20 +214,16 @@ with ui.row().style("display: flex; width: 100%;"):
     # Canvas controls
     with ui.column().style("flex-grow: 1; flex-basis: 0;"):
         with ui.row():
-            ui.button("Undo").props("id='undo-button'")
-            ui.button("Redo").props("id='redo-button'")
-        action_options = {
-            "pen": "🖊️",
-            "eraser": "🧽",
-            "smudge": "💨",
-        }
+            ui.button("Undo").props("id='undo-button'").props("class='keyboard-shortcuts' shortcut_data='btn,u'")
+            ui.button("Redo").props("id='redo-button'").props("class='keyboard-shortcuts' shortcut_data='btn,r'")
+        action_options = {"pen": "🖊️", "eraser": "🧽", "smudge": "💨", "clip": "📎"}
 
         action_toggle = ui.toggle(
             action_options,
             value="pen",
             on_change=switch_action,
         ).props(
-            "id='action-select' class='keyboard-shortcuts' shortcut_data='toggle,p:🖊️,e:🧽,s:💨'",
+            "id='action-select' class='keyboard-shortcuts' shortcut_data='toggle,p:🖊️,e:🧽,s:💨,c:📎'",
         )
         ui.separator().classes("w-full")
         with ui.row():
@@ -226,7 +233,7 @@ with ui.row().style("display: flex; width: 100%;"):
                     ui.label(colour)
                     colour_label = ui.label("00")
                     colour_values.append(colour_label)
-        ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,c'")
+        ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,z'")
         ui.separator().classes("w-full")
         width_input = ui.number(label="Line Width", min=1, max=50, step=1)
         width_slider = ui.slider(

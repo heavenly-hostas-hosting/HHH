@@ -1,3 +1,5 @@
+# There are a lot of NOQAs in this file as these are typehints based on JS classes/methods.
+
 from typing import Any, Literal
 
 from js import (  # pyright: ignore[reportMissingImports]
@@ -8,20 +10,40 @@ from js import (  # pyright: ignore[reportMissingImports]
 from pyodide.ffi import JsProxy  # pyright: ignore[reportMissingImports]
 
 
-class TextMetrics:
-    """Textmetrics typehints."""
+class DOMRect:
+    """Bounding box typehint."""
 
-    actualBoundingBoxAscent: float
-    actualBoundingBoxDescent: float
-    actualBoundingBoxLeft: float
-    actualBoundingBoxRight: float
-    alphabeticBaseline: float
-    emHeightAscent: float
-    emHeightDescent: float
-    fontBoundingBoxAscent: float
-    fontBoundingBoxDescent: float
-    hangingBaseline: float
-    ideographicBaseline: float
+    bottom: float
+    height: float
+    left: float
+    right: float
+    top: float
+    width: float
+    x: float
+    y: float
+
+
+class ImageBitmap:
+    """Image bitmap typehint."""
+
+    height: float
+    width: float
+
+
+class TextMetrics:
+    """TextMetrics typehint."""
+
+    actualBoundingBoxAscent: float  # noqa: N815
+    actualBoundingBoxDescent: float  # noqa: N815
+    actualBoundingBoxLeft: float  # noqa: N815
+    actualBoundingBoxRight: float  # noqa: N815
+    alphabeticBaseline: float  # noqa: N815
+    emHeightAscent: float  # noqa: N815
+    emHeightDescent: float  # noqa: N815
+    fontBoundingBoxAscent: float  # noqa: N815
+    fontBoundingBoxDescent: float  # noqa: N815
+    hangingBaseline: float  # noqa: N815
+    ideographicBaseline: float  # noqa: N815
     width: float
 
 
@@ -81,18 +103,23 @@ class CanvasContext:
     history: list[Any]
     history_index: int
     text_placed: bool
+    clipping: bool
+    moving_clip: bool
+    start_coords: list[float]
+    prev_stroke_style: str
+    prev_line_width: int
 
     # Builtin attributes
     canvas: Any
     direction: Any
-    fillStyle: Any
+    fillStyle: Any  # noqa: N815
     filter: Any
     font: Any
-    fontKerning: Any
-    fontStretch: Any
-    fontVariantCaps: Any
-    globalAlpha: Any
-    globalCompositeOperation: Literal[
+    fontKerning: Any  # noqa: N815
+    fontStretch: Any  # noqa: N815
+    fontVariantCaps: Any  # noqa: N815
+    globalAlpha: Any  # noqa: N815
+    globalCompositeOperation: Literal[  # noqa: N815
         "source-over",
         "source-in",
         "source-out",
@@ -121,24 +148,24 @@ class CanvasContext:
         "luminosity",
     ] = "source-over"
 
-    imageSmoothingEnabled: bool
-    imageSmoothingQuality: Any
-    langExperimental: Any
-    letterSpacing: Any
-    lineCap: str = "round"
-    lineDashOffset: Any
-    lineJoin: str = "round"
-    lineWidth: float
-    miterLimit: Any
-    shadowBlur: Any
-    shadowColor: Any
-    shadowOffsetX: Any
-    shadowOffsetY: Any
-    strokeStyle: str
-    textAlign: Any
-    textBaseline: Any
-    textRendering: Any
-    wordSpacing: Any
+    imageSmoothingEnabled: bool  # noqa: N815
+    imageSmoothingQuality: Any  # noqa: N815
+    langExperimental: Any  # noqa: N815
+    letterSpacing: Any  # noqa: N815
+    lineCap: str = "round"  # noqa: N815
+    lineDashOffset: Any  # noqa: N815
+    lineJoin: str = "round"  # noqa: N815
+    lineWidth: float  # noqa: N815
+    miterLimit: Any  # noqa: N815
+    shadowBlur: Any  # noqa: N815
+    shadowColor: Any  # noqa: N815
+    shadowOffsetX: Any  # noqa: N815
+    shadowOffsetY: Any  # noqa: N815
+    strokeStyle: str  # noqa: N815
+    textAlign: Any  # noqa: N815
+    textBaseline: Any  # noqa: N815
+    textRendering: Any  # noqa: N815
+    wordSpacing: Any  # noqa: N815
 
     def __init__(
         self,
@@ -174,7 +201,7 @@ class CanvasContext:
     ###########################################################################
     # Cutstom Methods
     ###########################################################################
-    def getBoundingClientRect(self) -> Any:  # noqa: ANN401
+    def getBoundingClientRect(self) -> DOMRect:  # noqa: N802
         """Get the canvas getBoundingClientRect."""
         return self.canvas.getBoundingClientRect()
 
@@ -186,6 +213,7 @@ class CanvasContext:
 
         Returns:
             tuple[float, float]: The x and y coordinates
+
         """
         x = (event.pageX - self.rect_left) * self.scaled_by
         y = (event.pageY - self.rect_top) * self.scaled_by
@@ -194,32 +222,32 @@ class CanvasContext:
     ###########################################################################
     # Builtin Methods
     ###########################################################################
-    def arc(  # noqa: PLR0913
+    def arc(  # noqa: PLR0913 This method has this many arguments.
         self,
         x: float,
         y: float,
         radius: float,
-        startAngle: float,
-        endAngle: float,
+        startAngle: float,  # noqa: N803
+        endAngle: float,  # noqa: N803
         *,
         counterclockwise: bool = False,
     ) -> None:
         """Add arc."""
         self.ctx.arc(x, y, radius, startAngle, endAngle, counterclockwise)
 
-    def arcTo(self) -> None:
+    def arcTo(self) -> None:  # noqa: N802
         """Add arcTo."""
         self.ctx.arcTo()
 
-    def beginPath(self) -> None:
+    def beginPath(self) -> None:  # noqa: N802
         """Add beginPath."""
         self.ctx.beginPath()
 
-    def bezierCurveTo(self) -> None:
+    def bezierCurveTo(self) -> None:  # noqa: N802
         """Add bezierCurveTo."""
         self.ctx.bezierCurveTo()
 
-    def clearRect(self, x: float, y: float, width: float, height: float) -> None:
+    def clearRect(self, x: float, y: float, width: float, height: float) -> None:  # noqa: N802
         """Add clearRect."""
         self.ctx.clearRect(x, y, width, height)
 
@@ -227,54 +255,54 @@ class CanvasContext:
         """Add clip."""
         self.ctx.clip()
 
-    def closePath(self) -> None:
+    def closePath(self) -> None:  # noqa: N802
         """Add closePath."""
         self.ctx.closePath()
 
-    def createConicGradient(self) -> None:
+    def createConicGradient(self) -> None:  # noqa: N802
         """Add createConicGradient."""
         self.ctx.createConicGradient()
 
-    def createImageData(self) -> None:
+    def createImageData(self) -> None:  # noqa: N802
         """Add createImageData."""
         self.ctx.createImageData()
 
-    def createLinearGradient(self) -> None:
+    def createLinearGradient(self) -> None:  # noqa: N802
         """Add createLinearGradient."""
         self.ctx.createLinearGradient()
 
-    def createPattern(self) -> None:
+    def createPattern(self) -> None:  # noqa: N802
         """Add createPattern."""
         self.ctx.createPattern()
 
-    def createRadialGradient(self) -> None:
+    def createRadialGradient(self) -> None:  # noqa: N802
         """Add createRadialGradient."""
         self.ctx.createRadialGradient()
 
-    def drawFocusIfNeeded(self) -> None:
+    def drawFocusIfNeeded(self) -> None:  # noqa: N802
         """Add drawFocusIfNeeded."""
         self.ctx.drawFocusIfNeeded()
 
-    def drawImage(
+    def drawImage(  # noqa: N802
         self,
         image: JsProxy,
         dx: float,
         dy: float,
-        dWidth: float | None = None,
-        dHeight: float | None = None,
+        dWidth: float | None = None,  # noqa: N803
+        dHeight: float | None = None,  # noqa: N803
     ) -> None:
         """Add drawImage."""
         self.ctx.drawImage(image, dx, dy, dWidth, dHeight)
 
-    def ellipse(  # noqa: PLR0913 We didn't decide how many args there are so...
+    def ellipse(  # noqa: PLR0913 This method has this many arguments.
         self,
         x: float,
         y: float,
-        radiusX: float,
-        radiusY: float,
+        radiusX: float,  # noqa: N803
+        radiusY: float,  # noqa: N803
         rotation: float,
-        startAngle: float,
-        endAngle: float,
+        startAngle: float,  # noqa: N803
+        endAngle: float,  # noqa: N803
         *,
         counterclockwise: bool = False,
     ) -> None:
@@ -285,63 +313,63 @@ class CanvasContext:
         """Add fill."""
         self.ctx.fill()
 
-    def fillRect(self, x: float, y: float, width: float, height: float) -> None:
+    def fillRect(self, x: float, y: float, width: float, height: float) -> None:  # noqa: N802
         """Add fillRect."""
         self.ctx.fillRect(x, y, width, height)
 
-    def fillText(self, text: str, x: float, y: float) -> None:
+    def fillText(self, text: str, x: float, y: float) -> None:  # noqa: N802
         """Add fillText."""
         self.ctx.fillText(text, x, y)
 
-    def getContextAttributes(self) -> None:
+    def getContextAttributes(self) -> None:  # noqa: N802
         """Add getContextAttributes."""
         self.ctx.getContextAttributes()
 
-    def getImageData(self, sx: float, sy: float, sw: float, sh: float) -> Any:  # noqa: ANN401
+    def getImageData(self, sx: float, sy: float, sw: float, sh: float) -> ImageData:  # noqa: N802
         """Get the image data from the canvas."""
-        self.ctx.getImageData(sx, sy, sw, sh)
+        return self.ctx.getImageData(sx, sy, sw, sh)
 
-    def getLineDash(self) -> None:
+    def getLineDash(self) -> None:  # noqa: N802
         """Add getLineDash."""
         self.ctx.getLineDash()
 
-    def getTransform(self) -> None:
+    def getTransform(self) -> None:  # noqa: N802
         """Add getTransform."""
         self.ctx.getTransform()
 
-    def isContextLost(self) -> None:
+    def isContextLost(self) -> None:  # noqa: N802
         """Add isContextLost."""
         self.ctx.isContextLost()
 
-    def isPointInPath(self) -> None:
+    def isPointInPath(self) -> None:  # noqa: N802
         """Add isPointInPath."""
         self.ctx.isPointInPath()
 
-    def isPointInStroke(self) -> None:
+    def isPointInStroke(self) -> None:  # noqa: N802
         """Add isPointInStroke."""
         self.ctx.isPointInStroke()
 
-    def lineTo(self, x: float, y: float) -> None:
+    def lineTo(self, x: float, y: float) -> None:  # noqa: N802
         """Make a  line to the x, y given."""
         self.ctx.lineTo(x, y)
 
-    def measureText(self, text: str) -> TextMetrics:
+    def measureText(self, text: str) -> TextMetrics:  # noqa: N802
         """Add measureText."""
         return self.ctx.measureText(text)
 
-    def moveTo(self, x: float, y: float) -> None:
+    def moveTo(self, x: float, y: float) -> None:  # noqa: N802
         """Move to the x, y given."""
         self.ctx.moveTo(x, y)
 
-    def putImageData(  # noqa: PLR0913
+    def putImageData(  #  # noqa: N802, PLR0913 This method has this many arguments.
         self,
-        imageData: ImageData,
+        imageData: ImageData,  # noqa: N803
         dx: float,
         dy: float,
-        dirtyX: float | None = None,
-        dirtyY: float | None = None,
-        dirtyWidth: float | None = None,
-        dirtyHeight: float | None = None,
+        dirtyX: float | None = None,  # noqa: N803
+        dirtyY: float | None = None,  # noqa: N803
+        dirtyWidth: float | None = None,  # noqa: N803
+        dirtyHeight: float | None = None,  # noqa: N803
     ) -> None:
         """Paint rectangle onto canvas.
 
@@ -376,6 +404,7 @@ class CanvasContext:
         dirtyHeight: float | None = None
             Height of the rectangle to be painted. Defaults to the height of
             the image data.
+
         """
         self.ctx.putImageData(
             imageData,
@@ -387,19 +416,19 @@ class CanvasContext:
             dirtyHeight,
         )
 
-    def quadraticCurveTo(self) -> None:
+    def quadraticCurveTo(self) -> None:  # noqa: N802
         """Add quadraticCurveTo."""
         self.ctx.quadraticCurveTo()
 
-    def rect(self, *_: list) -> None:
+    def rect(self, x: float, y: float, width: float, height: float) -> None:
         """Set the rect."""
-        self.ctx.rect()
+        self.ctx.rect(x, y, width, height)
 
     def reset(self) -> None:
         """Add reset."""
         self.ctx.reset()
 
-    def resetTransform(self) -> None:
+    def resetTransform(self) -> None:  # noqa: N802
         """Add resetTransform."""
         self.ctx.resetTransform()
 
@@ -411,7 +440,7 @@ class CanvasContext:
         """Add rotate."""
         self.ctx.rotate()
 
-    def roundRect(self) -> None:
+    def roundRect(self) -> None:  # noqa: N802
         """Add roundRect."""
         self.ctx.roundRect()
 
@@ -423,11 +452,11 @@ class CanvasContext:
         """Add scale."""
         self.ctx.scale(x, y)
 
-    def setLineDash(self) -> None:
+    def setLineDash(self, segments: list[float]) -> None:  # noqa: N802
         """Add setLineDash."""
-        self.ctx.setLineDash()
+        self.ctx.setLineDash(segments)
 
-    def setTransform(self) -> None:
+    def setTransform(self) -> None:  # noqa: N802
         """Add setTransform."""
         self.ctx.setTransform()
 
@@ -435,11 +464,11 @@ class CanvasContext:
         """Add stroke."""
         self.ctx.stroke()
 
-    def strokeRect(self) -> None:
+    def strokeRect(self, x: float, y: float, width: float, height: float) -> None:  # noqa: N802
         """Add strokeRect."""
-        self.ctx.strokeRect()
+        self.ctx.strokeRect(x, y, width, height)
 
-    def strokeText(self) -> None:
+    def strokeText(self) -> None:  # noqa: N802
         """Add strokeText."""
         self.ctx.strokeText()
 
