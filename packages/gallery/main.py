@@ -9,8 +9,8 @@ from pyscript import when, window, document  # pyright: ignore[reportMissingImpo
 from js import (  # pyright: ignore[reportMissingImports]
     Math,
     THREE,
-    LineSegments2,
-    LineMaterial,
+    # LineSegments2,
+    # LineMaterial,
     Object,
     console,
     GLTFLoader,
@@ -53,6 +53,22 @@ SCENE.background = THREE.Color.new(setcolor)
 MODULAR_GROUP = THREE.Object3D.new()
 SCENE.add(MODULAR_GROUP)
 
+CUBES: list[THREE.Mesh] = []  # a list of all cubes in the scene
+OFFSET = 0.1    # distance which we maintain from walls
+
+"""
+BOUNDING_BOXES = list()     # a list of all bounding boxes
+OBJECTS = list()            # a list of objs who have a bb
+
+def create_bounding_box(obj):
+    box = THREE.Box3.new().setFromObject(obj)
+    BOUNDING_BOXES.append(box)
+    OBJECTS.append(obj)
+    return box
+
+CAMERA_BOUNDING_BOX = create_bounding_box(CAMERA)
+SCENE.add(THREE.Box3Helper.new(CAMERA_BOUNDING_BOX, "#ff00ff"))
+"""
 
 # Camera controls and mouse lock
 CONTROLS = PointerLockControls.new(CAMERA, document.body)
@@ -154,7 +170,18 @@ def move_character(delta_time: float):
             VELOCITY.setLength(max_speed)
 
     VELOCITY.multiplyScalar(1 - min(damping * delta_time, 1))
-    CAMERA.position.addScaledVector(VELOCITY, delta_time)
+    return VELOCITY
+
+
+def check_collision(velocity: THREE.Vector3, delta_time: float):
+    raycaster = THREE.Raycaster.new()
+    direction = velocity.clone().normalize()
+    raycaster.set(CAMERA.position, direction)
+
+    intersections = raycaster.intersectObjects(CUBES)
+    if not intersections:
+        return True
+    return intersections[0].distance > velocity.length() * delta_time + OFFSET
 
 
 MOUSE = THREE.Vector2.new()
@@ -192,12 +219,6 @@ def generate_lights() -> None:
 def load_image(image_loc: str):
     textureLoader = THREE.TextureLoader.new()
     texture = textureLoader.load(image_loc)
-    # texture = textureLoader.load(
-    #     image_loc,
-    #     create_proxy(lambda e: create_photoframe(texture)),
-    #     create_proxy(log),
-    #     create_proxy(log),
-    # )
     return texture
 
 
@@ -205,9 +226,7 @@ def create_plane(texture):
     perms = convert_dict_to_js_object(
         {
             "map": texture,
-            "transparent": True,  # removes the black bg
-            # the color makes it look wierd so commented it
-            # "color": "#A6D32B",
+            "transparent": True,
         }
     )
 
@@ -294,6 +313,7 @@ def load_gallery():
         # Backface culling
         assert obj.children[0].name == "Cube"
         for v in obj.children[0].children:
+            CUBES.append(v)
             v.material.side = THREE.FrontSide
 
         for v in obj.children[1:]:
@@ -336,7 +356,13 @@ def load_gallery():
 async def main():
     clock = THREE.Clock.new()
     while True:
-        move_character(clock.getDelta())
+        delta = clock.getDelta()
+        velocity = move_character(delta)
+        if check_collision(velocity, delta):
+            CAMERA.position.addScaledVector(velocity, delta)
+        # else:
+        #     print("COLLISION DETECTED")
+
         RENDERER.render(SCENE, CAMERA)
         await asyncio.sleep(0.02)
 
