@@ -169,14 +169,36 @@ def show_action_icon(x: float, y: float) -> bool:
 
     def draw_clip(img_bitmap: ImageBitmap) -> None:
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ratio = img_bitmap.width / img_bitmap.height
 
-        buffer_ctx.strokeRect(
-            x - img_bitmap.width / 2,
-            y - img_bitmap.height / 2,
-            img_bitmap.width,
-            img_bitmap.height,
-        )
-        buffer_ctx.drawImage(img_bitmap, x - img_bitmap.width / 2, y - img_bitmap.height / 2)
+        if img_bitmap.width < img_bitmap.height:
+            buffer_ctx.strokeRect(
+                x - (img_bitmap.width + ctx.size_change) / 2,
+                y - (img_bitmap.height + ctx.size_change * ratio) / 2,
+                img_bitmap.width + ctx.size_change,
+                img_bitmap.height + ctx.size_change * ratio,
+            )
+            buffer_ctx.drawImage(
+                img_bitmap,
+                x - (img_bitmap.width + ctx.size_change) / 2,
+                y - (img_bitmap.height + ctx.size_change * ratio) / 2,
+                img_bitmap.width + ctx.size_change,
+                img_bitmap.height + ctx.size_change * ratio,
+            )
+        else:
+            buffer_ctx.strokeRect(
+                x - (img_bitmap.width + ctx.size_change * ratio) / 2,
+                y - (img_bitmap.height + ctx.size_change) / 2,
+                img_bitmap.width + ctx.size_change * ratio,
+                img_bitmap.height + ctx.size_change,
+            )
+            buffer_ctx.drawImage(
+                img_bitmap,
+                x - (img_bitmap.width + ctx.size_change * ratio) / 2,
+                y - (img_bitmap.height + ctx.size_change) / 2,
+                img_bitmap.width + ctx.size_change * ratio,
+                img_bitmap.height + ctx.size_change,
+            )
 
     if ctx.moving_clip:
         createImageBitmap(ctx.prev_data).then(draw_clip)
@@ -539,7 +561,26 @@ def special_actions(x: float, y: float) -> bool:
 
         def draw_clip(img_bitmap: ImageBitmap) -> None:
             buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
-            ctx.drawImage(img_bitmap, x - img_bitmap.width / 2, y - img_bitmap.height / 2)
+            ratio = img_bitmap.width / img_bitmap.height
+
+            if img_bitmap.width < img_bitmap.height:
+                ctx.drawImage(
+                    img_bitmap,
+                    x - (img_bitmap.width + ctx.size_change) / 2,
+                    y - (img_bitmap.height + ctx.size_change * ratio) / 2,
+                    img_bitmap.width + ctx.size_change,
+                    img_bitmap.height + ctx.size_change * ratio,
+                )
+            else:
+                ctx.drawImage(
+                    img_bitmap,
+                    x - (img_bitmap.width + ctx.size_change * ratio) / 2,
+                    y - (img_bitmap.height + ctx.size_change) / 2,
+                    img_bitmap.width + ctx.size_change * ratio,
+                    img_bitmap.height + ctx.size_change,
+                )
+
+            ctx.size_change = 0
             save_history()
 
         createImageBitmap(ctx.prev_data).then(draw_clip)
@@ -776,16 +817,27 @@ def handle_scroll(e: Event) -> None:
             e.deltaY > 0
             and min(ctx.current_img.width + ctx.size_change, ctx.current_img.height + ctx.size_change) > MIN_TEXT_SIZE
         ):
-            ctx.size_change -= 5
+            ctx.size_change -= 10
         elif (
             e.deltaY < 0
             and max(ctx.current_img.width + ctx.size_change, ctx.current_img.height + ctx.size_change)
             < MAX_TEXT_SIZE * 100
         ):
-            ctx.size_change += 5
+            ctx.size_change += 10
         show_action_icon(x, y)
     elif ctx.moving_clip:
-        pass
+        if (
+            e.deltaY > 0
+            and min(ctx.prev_data.width + ctx.size_change, ctx.prev_data.height + ctx.size_change) > MIN_TEXT_SIZE
+        ):
+            ctx.size_change -= 10
+        elif (
+            e.deltaY < 0
+            and max(ctx.prev_data.width + ctx.size_change, ctx.prev_data.height + ctx.size_change)
+            < MAX_TEXT_SIZE * 100
+        ):
+            ctx.size_change += 10
+        show_action_icon(x, y)
 
 
 window.addEventListener("resize", resize)
