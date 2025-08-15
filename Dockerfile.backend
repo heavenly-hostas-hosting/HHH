@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-workspace --package=backend
 
-ADD ./packages/backend /app
+# ADD ./packages/backend /app  # we'll rely on mounts for now
 
 # RUN --mount=type=cache,target=/root/.cache/uv \
 #     uv sync --frozen
