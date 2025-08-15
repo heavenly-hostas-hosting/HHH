@@ -113,12 +113,14 @@ def undo(_: Event) -> None:
         return
     ctx.history_index -= 1
 
-    createImageBitmap(ctx.history[ctx.history_index]).then(
-        lambda img_bitmap: (
-            ctx.clearRect(0, 0, canvas.width, canvas.height),
-            ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
-        ),
-    )
+    def place_history(img_bitmap: ImageBitmap) -> None:
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.prev_operation = ctx.globalCompositeOperation
+        ctx.globalCompositeOperation = "source-over"
+        ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height)
+        ctx.globalCompositeOperation = ctx.prev_operation
+
+    createImageBitmap(ctx.history[ctx.history_index]).then(place_history)
 
 
 @when("click", "#redo-button")
@@ -128,12 +130,14 @@ def redo(_: Event) -> None:
         return
     ctx.history_index += 1
 
-    createImageBitmap(ctx.history[ctx.history_index]).then(
-        lambda img_bitmap: (
-            ctx.clearRect(0, 0, canvas.width, canvas.height),
-            ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height),
-        ),
-    )
+    def place_history(img_bitmap: ImageBitmap) -> None:
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.prev_operation = ctx.globalCompositeOperation
+        ctx.globalCompositeOperation = "source-over"
+        ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height)
+        ctx.globalCompositeOperation = ctx.prev_operation
+
+    createImageBitmap(ctx.history[ctx.history_index]).then(place_history)
 
 
 def draw_pixel(x: float, y: float) -> None:
@@ -178,7 +182,7 @@ def show_action_icon(x: float, y: float) -> bool:
     if ctx.moving_image:
         buffer_ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         return True
-    if not(ctx.text_placed):
+    if ctx.writing_text:
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
@@ -478,6 +482,7 @@ def special_actions(x: float, y: float) -> bool:
         ctx.drawImage(ctx.current_img, x - ctx.current_img.width / 2, y - ctx.current_img.height / 2)
         ctx.globalCompositeOperation = ctx.prev_operation
         save_history()
+
         return True
     if ctx.writing_text:
         ctx.text_placed = True
@@ -497,6 +502,7 @@ def special_actions(x: float, y: float) -> bool:
         def draw_clip(img_bitmap: ImageBitmap) -> None:
             buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
             ctx.drawImage(img_bitmap, x - img_bitmap.width / 2, y - img_bitmap.height / 2)
+            save_history()
 
         createImageBitmap(ctx.prev_data).then(draw_clip)
         ctx.setLineDash([])
@@ -506,7 +512,7 @@ def special_actions(x: float, y: float) -> bool:
 
         buffer_ctx.strokeStyle = ctx.prev_stroke_style
         buffer_ctx.lineWidth = ctx.prev_line_width
-        save_history()
+
         return True
     return False
 
