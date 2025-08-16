@@ -4,16 +4,17 @@
 ## DOCS
 ## https:#threejs.org/docs/
 
+
+# -------------------------------------- IMPORTS --------------------------------------
+print('IMPORTS')
+
 from pyodide.ffi import to_js, create_proxy  # pyright: ignore[reportMissingImports]
 from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
 from pyscript import when, window, document  # pyright: ignore[reportMissingImports]
 from js import (  # pyright: ignore[reportMissingImports]
     Math,
     THREE,
-    # LineSegments2,
-    # LineMaterial,
     Object,
-    console,
     GLTFLoader,
     PointerLockControls,
 )
@@ -25,16 +26,10 @@ import asyncio
 import json
 
 
-def log(*msgs):
-    for msg in msgs:
-        console.log(msg)
+# -------------------------------------- GLOBAL VARIABLES --------------------------------------
+print('GLOBAL VARIABLES')
 
-
-def convert_dict_to_js_object(my_dict: dict):
-    """Convert a Python dict to a JavaScript object."""
-    return Object.fromEntries(to_js(my_dict))
-
-
+# Renderer set up
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
 RENDERER.shadowMap.enabled = False
 RENDERER.shadowMap.type = THREE.PCFSoftShadowMap
@@ -42,61 +37,96 @@ RENDERER.shadowMap.needsUpdate = True
 RENDERER.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(RENDERER.domElement)
 
-CAMERA = THREE.PerspectiveCamera.new(53, window.innerWidth / window.innerHeight, 0.01, 500)
-CAMERA.position.set(3, 1, 3.5)
-CAMERA.rotation.set(0, 0.4, 0)
-
+# Scene setup
 setcolor = "#8B8B8B"  # Nicer than just black
 SCENE = THREE.Scene.new()
 SCENE.background = THREE.Color.new(setcolor)
-# SCENE.fog = THREE.Fog.new(setcolor, 2.5, 3.5)
-# CAMERA.lookAt(SCENE.position)
 
-MODULAR_GROUP = THREE.Object3D.new()
-SCENE.add(MODULAR_GROUP)
+# Camera setup
+CAMERA = THREE.PerspectiveCamera.new(53, window.innerWidth / window.innerHeight, 0.01, 500)
+CAMERA.position.set(3, 1, 3.5)
+CAMERA.rotation.set(0, 0.4, 0)
+SCENE.add(CAMERA)
 
-CUBES: list[THREE.Mesh] = []  # a list of all cubes in the scene
+# Other global variables
+ROOMS: list[THREE.Group] = []   # a list of all rooms in the scene
+LOADED_ROOMS: list[THREE.Group] = []  # a list of all loaded rooms (or the loaded chunks)
+CURRENT_ROOM: THREE.Group = None  # the room in which the player currently is
+ROOM_SIZE = [11.5, 4.2, 11.5]
+
 OFFSET = 0.1  # distance which we maintain from walls
+TRIGGER_COLLISION = False  # whether we are currently colliding with a trigger
 
-"""
-BOUNDING_BOXES = list()     # a list of all bounding boxes
-OBJECTS = list()            # a list of objs who have a bb
+VELOCITY = THREE.Vector3.new()
 
-def create_bounding_box(obj):
-    box = THREE.Box3.new().setFromObject(obj)
-    BOUNDING_BOXES.append(box)
-    OBJECTS.append(obj)
-    return box
-
-CAMERA_BOUNDING_BOX = create_bounding_box(CAMERA)
-SCENE.add(THREE.Box3Helper.new(CAMERA_BOUNDING_BOX, "#ff00ff"))
-"""
-
-# Camera controls and mouse lock
-CONTROLS = PointerLockControls.new(CAMERA, document.body)
-document.getElementById("instructions").addEventListener("click", create_proxy(CONTROLS.lock))
-CONTROLS.addEventListener(
-    "lock",
-    create_proxy(
-        lambda x: setattr(
-            document.getElementById("instructions").style,
-            "display",
-            "none",
-        ),
-    ),
-)
-CONTROLS.addEventListener(
-    "unlock",
-    create_proxy(
-        lambda x: setattr(
-            document.getElementById("instructions").style,
-            "display",
-            "block",
-        ),
-    ),
+REPO_URL = (
+    r"https://cdn.jsdelivr.net/gh/"
+    r"Matiiss/pydis-cj12-heavenly-hostas@dev/"
+    r"packages/gallery/assets/images/"
 )
 
+# For Type Hinting
+V3 = tuple[float, float, float]
+V2 = tuple[float, float]
 
+
+# -------------------------------------- HELPER FUNCTIONS --------------------------------------
+print('HELPER FUNCTIONS')
+
+# def log(*msgs):
+#     for msg in msgs:
+#         console.log(msg)
+
+def tree_print(x, indent=0):
+    # Prints a 3D model's tree structure
+    qu = '"'
+    output = " " * 4 * indent + f"{x.name or qu * 2} ({x.type})"
+    for i in x.children:
+        output += "\n" + tree_print(i, indent=indent + 1)
+    return output
+
+
+def convert_dict_to_js_object(my_dict: dict):
+    """Convert a Python dict to a JavaScript object."""
+    return Object.fromEntries(to_js(my_dict))
+
+
+def mathRandom(num=1):
+    setNumber = -Math.random() * num + Math.random() * num
+    return setNumber
+
+
+def get_painting_info(p: THREE.Mesh) -> tuple[V3, V3, V2]:
+    position: V3 = p.position.x, p.position.y, p.position.z
+
+    n_array = p.geometry.attributes.normal.array
+    # Beware possible Y-up/Z-up shenanigans
+    normal: V3 = (-n_array[2], n_array[1], n_array[0])
+    id_ = int(p.name[-3:])
+    print(id_, normal)
+
+    bb = p.geometry.boundingBox
+    size_xyz = [abs(getattr(bb.max, i) - getattr(bb.min, i)) for i in ("x", "y", "z")]
+    # Height is Z
+    size_wh: V2 = (max(size_xyz[0], size_xyz[1]), (size_xyz[2]))
+
+    return (position, normal, size_wh)
+
+
+def get_chunk_coords() -> tuple[int, int]:
+    x_coord = (CAMERA.position.x - ROOM_SIZE[0]/2) // ROOM_SIZE[0]
+    z_coord = (CAMERA.position.z - ROOM_SIZE[2]/2) // ROOM_SIZE[2]
+
+    if x_coord < 0: x_coord = 0
+    if z_coord < 0: z_coord = 0
+
+    return x_coord, z_coord
+
+
+# -------------------------------------- MOVEMENT CONTROLS --------------------------------------
+print('MOVEMENT CONTROLS')
+
+# Movement Controls
 INPUTS = Enum("INPUTS", ["FORW", "LEFT", "RIGHT", "BACK", "UP", "DOWN", "RUN"])
 KEY_MAPPINGS: dict[INPUTS, set[str]] = {
     INPUTS.FORW: {"KeyW", "KeyK", "ArrowUp"},
@@ -125,9 +155,8 @@ def toggle_run(event):
 
 document.addEventListener("keydown", create_proxy(toggle_run))
 
-VELOCITY = THREE.Vector3.new()
 
-
+# Main move function
 def move_character(delta_time: float):
     pressed_keys = {k for k, v in KEY_MAPPINGS.items() if any(KEY_STATES[i] for i in v)}
     damping = 7
@@ -175,20 +204,36 @@ def move_character(delta_time: float):
     return VELOCITY
 
 
-def check_collision(velocity: THREE.Vector3, delta_time: float):
-    raycaster = THREE.Raycaster.new()
-    direction = velocity.clone().normalize()
-    raycaster.set(CAMERA.position, direction)
-
-    intersections = raycaster.intersectObjects(CUBES)
-    if not intersections:
-        return True
-    return intersections[0].distance > velocity.length() * delta_time + OFFSET
-
+# -------------------------------------- MOUSE CONTROLS --------------------------------------
+print('MOUSE CONTROLS')
 
 MOUSE = THREE.Vector2.new()
 
+# Mouse Lock
+CONTROLS = PointerLockControls.new(CAMERA, document.body)
+document.getElementById("instructions").addEventListener("click", create_proxy(CONTROLS.lock))
+CONTROLS.addEventListener(
+    "lock",
+    create_proxy(
+        lambda x: setattr(
+            document.getElementById("instructions").style,
+            "display",
+            "none",
+        ),
+    ),
+)
+CONTROLS.addEventListener(
+    "unlock",
+    create_proxy(
+        lambda x: setattr(
+            document.getElementById("instructions").style,
+            "display",
+            "block",
+        ),
+    ),
+)
 
+# Mouse Controls
 @when("mousemove", "body")
 def onMouseMove(event):
     event.preventDefault()
@@ -196,48 +241,90 @@ def onMouseMove(event):
     MOUSE.y = -(event.clientY / window.innerHeight) * 2 + 1
 
 
-def mathRandom(num=1):
-    setNumber = -Math.random() * num + Math.random() * num
-    return setNumber
+# -------------------------------------- COLLISION DETECTION --------------------------------------
+print('COLLISION DETECTION')
+
+def check_collision(velocity: THREE.Vector3, delta_time: float) -> bool:
+    '''
+    Checks for collision with walls (cubes) and triggers
+    returns true if it is safe to move and false if movement should be stopped
+    '''
+    # print("Checking collision with walls and triggers...")
+    # print(CURRENT_ROOM)
+    raycaster = THREE.Raycaster.new()
+    direction = velocity.clone().normalize()
+    raycaster.set(CAMERA.position, direction)
+
+    check_collision_with_trigger(velocity, delta_time, raycaster)
+
+    return check_collision_with_wall(velocity, delta_time, raycaster)
+
+def check_collision_with_wall(velocity: THREE.Vector3, delta_time: float, raycaster: THREE.Raycaster) -> bool:
+    # print('walls', CURRENT_ROOM.name)
+    cubes = []
+    [cubes.extend(c.getObjectByName("Cubes").children) for c in LOADED_ROOMS]
+    intersections = raycaster.intersectObjects(cubes, recursive=True)
+    if not intersections:
+        return True
+    return intersections[0].distance > velocity.length() * delta_time + OFFSET
+
+def check_collision_with_trigger(velocity: THREE.Vector3, delta_time: float, raycaster: THREE.Raycaster):
+    global CURRENT_ROOM, TRIGGER_COLLISION
+    # print('trigger', CURRENT_ROOM.name)
+
+    triggers = []
+    [triggers.extend(c.getObjectByName("Triggers").children) for c in LOADED_ROOMS]
+
+    intersections = raycaster.intersectObjects(triggers, recursive=True)
+    if intersections and intersections[0].distance <= velocity.length() * delta_time:
+        if not TRIGGER_COLLISION:
+            TRIGGER_COLLISION = True
+    else:
+        if TRIGGER_COLLISION:
+            TRIGGER_COLLISION = False
+            print("Exited trigger area")
+
+            calc = lambda x, y: (x - y/2) // y
+
+            """
+            coords = get_chunk_coords()
+            CURRENT_ROOM = SCENE.getObjectByName(f"room_{int(coords[0])}_{int(coords[1])}")
+            print("UPDATED CURRENT ROOM", CURRENT_ROOM.name)
+            load_room()
+            """
 
 
-def generate_lights() -> None:
-    light = THREE.SpotLight.new(0xFF_FF_FF, 3)
-    light.position.set(5, 5, 2)
-    light.castShadow = True
-    light.shadow.mapSize.width = 10000
-    light.shadow.mapSize.height = light.shadow.mapSize.width
-    light.penumbra = 0.5
-    SCENE.add(light)
+# -------------------------------------- ROOM CREATION --------------------------------------
+print('ROOM CREATION')
 
-    lightBack = THREE.PointLight.new(0xEF_FF_FF, 1)
-    lightBack.position.set(0, -3, -1)
-    SCENE.add(lightBack)
+def generate_lights() -> THREE.Group:
+    light_main = THREE.SpotLight.new(0xFF_FF_FF, 3)
+    light_main.position.set(5, 5, 2)
+    light_main.castShadow = True
+    light_main.shadow.mapSize.width = 10000
+    light_main.shadow.mapSize.height = light_main.shadow.mapSize.width
+    light_main.penumbra = 0.5
 
-    ambientLight = THREE.AmbientLight.new(0xFFFFFF, 0.3)
-    SCENE.add(ambientLight)
+    light_back = THREE.PointLight.new(0xEF_FF_FF, 1)
+    light_back.position.set(0, -3, -1)
+
+    ambient_light = THREE.AmbientLight.new(0xFFFFFF, 0.3)
+
+    lights = THREE.Group.new()
+    lights.add(light_main)
+    lights.add(light_back)
+    lights.add(ambient_light)
+
+    return lights
 
 
-REPO_URL = (
-    r"https://cdn.jsdelivr.net/gh/"
-    r"Matiiss/pydis-cj12-heavenly-hostas@dev/"
-    r"packages/gallery/assets/images/"
-)
-
-
-def load_image(image_loc: str):
+def load_image(image_loc: str) -> THREE.Texture:
     textureLoader = THREE.TextureLoader.new()
     texture = textureLoader.load(REPO_URL + image_loc)
-    # texture = textureLoader.load(
-    #     image_loc,
-    #     create_proxy(lambda e: create_photoframe(texture)),
-    #     create_proxy(log),
-    #     create_proxy(log),
-    # )
     return texture
 
 
-def create_plane(texture):
+def create_plane(texture: THREE.Texture) -> THREE.Mesh:
     perms = convert_dict_to_js_object(
         {
             "map": texture,
@@ -254,39 +341,10 @@ def create_plane(texture):
     return plane
 
 
-V3 = tuple[float, float, float]
-V2 = tuple[float, float]
-PAINTING_SLOTS: list[tuple[V3, V3, V2]] = []
-
-# doesnt work, idk why
-"""
-def create_borders(plane):
-    width = 0.02  # Width of the border
-
-    # Create a border around the plane
-    borderGeometry = THREE.EdgesGeometry.new(plane.geometry)
-    borderMaterial = LineMaterial.new(
-        convert_dict_to_js_object({
-            "color": "#FF0000",
-            "linewidth": 10
-            })
-        )
-    border = LineSegments2.new(borderGeometry, borderMaterial)
-
-    # Set the position and scale of the border
-    border.position.copy(plane.position)
-    border.scale.x = plane.scale.x * (1 + width)
-    border.scale.y = plane.scale.y * (1 + width)
-    border.scale.z = plane.scale.z * (1 + width)
-
-    return border
- """
-
-
-async def snap_to_slot(photo, slot: int):
-    while not PAINTING_SLOTS:
-        await asyncio.sleep(0.05)
-    (x, y, z), (nx, ny, nz), (w, h) = PAINTING_SLOTS[slot]
+async def snap_to_slot(photo: THREE.Group, slot: int, picture_grp: THREE.Group) -> None:
+    # while not PAINTING_SLOTS:
+    #     await asyncio.sleep(0.05)
+    (x, y, z), (nx, ny, nz), (w, h) = get_painting_info(picture_grp.children[slot])
     photo.position.x = x
     photo.position.y = y
     photo.position.z = z
@@ -296,64 +354,78 @@ async def snap_to_slot(photo, slot: int):
     photo.quaternion.copy(q)
 
 
-async def create_photoframe(image_loc, slot: int = 0):
+async def create_photoframe(image_loc, slot: int, picture_grp: THREE.Group) -> THREE.Group:
     texture = load_image(image_loc)
     plane = create_plane(texture)
-    # border = create_borders(plane)
 
     photo = THREE.Object3D.new()
     photo.add(plane)
-    # photo.add(border)
 
-    await snap_to_slot(photo, slot)
-    SCENE.add(photo)
+    await snap_to_slot(photo, slot, picture_grp)
+    photo.name = f"picture_{slot:03d}"
+    picture_grp.add(photo)
 
     return photo
 
 
-def tree_print(x, indent=0):
-    # Prints a 3D model's tree structure
-    qu = '"'
-    output = " " * 4 * indent + f"{x.name or qu * 2} ({x.type})"
-    for i in x.children:
-        output += "\n" + tree_print(i, indent=indent + 1)
-    return output
+async def load_images_from_listing(room: THREE.Group) -> None:
+    r = await pyfetch(REPO_URL + "../" + "test-image-listing.json")
+    data = await r.text()
+    images = json.loads(data)
+
+    while not room.getObjectByName("Pictures"):
+        await asyncio.sleep(0.05)
+    picture_grp = room.getObjectByName("Pictures")
+
+    for idx, img in enumerate(images):
+        asyncio.ensure_future(create_photoframe(img, idx, picture_grp))
 
 
-def load_gallery():
-    def inner_loader(gltf):
-        obj = gltf.scene
-        MODULAR_GROUP.add(obj)
+def room_objects_handling(room: THREE.Group) -> THREE.Group:
+    assert room.children[0].name.startswith("Cube")
+    room.children[0].name = "Cubes"
+    for v in room.children[0].children:
+        v.material.side = THREE.FrontSide
+    
+    triggers = THREE.Group.new()
+    triggers.name = "Triggers"
 
-        # Backface culling
-        assert obj.children[0].name.startswith("Cube")
-        for v in obj.children[0].children:
-            CUBES.append(v)
-            v.material.side = THREE.FrontSide
+    pictures = THREE.Group.new()
+    pictures.name = "Pictures"
 
-        for v in obj.children[1:]:
-            if not v.name.startswith("pic"):
-                continue
-            position: V3 = v.position.x, v.position.y, v.position.z
+    for v in room.children[1:]:
+        if v.name.startswith("trigger"):
+            room.remove(v)
+            triggers.add(v)
+            # v.visible = False
+            # size_xyz = [1, 4.2, 1.8]
 
-            n_array = v.geometry.attributes.normal.array
-            # Beware possible Y-up/Z-up shenanigans
-            normal: V3 = (-n_array[2], n_array[1], n_array[0])
-            id_ = int(v.name[-3:])
-            print(id_, normal)
-
-            bb = v.geometry.boundingBox
-            size_xyz = [abs(getattr(bb.max, i) - getattr(bb.min, i)) for i in ("x", "y", "z")]
-            # Height is Z
-            size_wh: V2 = (max(size_xyz[0], size_xyz[1]), (size_xyz[2]))
-
-            PAINTING_SLOTS.append((position, normal, size_wh))
-
+        if v.name.startswith("pic"):
+            room.remove(v)
+            pictures.add(v)
             v.visible = False
+    
+    room.add(triggers)
+    room.add(pictures)
 
-        print(f"Loading done! Here's its component structure:")
-        print(tree_print(obj))
-        print(f"Number of painting slots:", len(PAINTING_SLOTS))
+    return pictures
+
+
+async def create_room(chunk_coords: tuple[int, int] = (0, 0), rotation: int = 0, room_type: int = 0) -> THREE.Group:
+    '''
+    chunk_coords represent the coordinates of the room
+    rotation represents the rotation of the room, which is supposed to be multiples of pi/2
+    room_type represents the type of the room (TODO)
+    '''
+
+    lights = generate_lights()
+    print("Lights generated")
+
+    gltf = None
+
+    def inner_loader(loaded_obj):
+        nonlocal gltf
+        gltf = loaded_obj
 
     def inner_progress(xhr):
         print(str(xhr.loaded) + " loaded")
@@ -369,32 +441,87 @@ def load_gallery():
         create_proxy(inner_error),
     )
 
+    while not gltf:
+        await asyncio.sleep(0.05)
 
-async def load_images_from_listing() -> None:
-    r = await pyfetch(REPO_URL + "../" + "test-image-listing.json")
-    data = await r.text()
-    images = json.loads(data)
-    for idx, img in enumerate(images):
-        asyncio.ensure_future(create_photoframe(img, idx))
+    print('loaded gltf')
+    obj = gltf.scene
+    # obj.visible = False
+    obj.name = f"room_{chunk_coords[0]}_{chunk_coords[1]}"
+    ROOMS.append(obj)
 
+    # Backface culling
+    picture_grp = room_objects_handling(obj)
+
+    print(f"Loading done! Here's its component structure:")
+    print(tree_print(obj))
+    print(f"Number of painting slots:", len(picture_grp.children))
+
+    room = gltf.scene
+    position = (chunk_coords[0] * ROOM_SIZE[0], 0, chunk_coords[1] * ROOM_SIZE[2])
+    room.position.set(*position)
+    room.rotation.y = rotation * 1.57
+
+
+    await load_images_from_listing(room)
+
+    room.add(lights)
+    SCENE.add(room)
+
+    return room
+
+
+# -------------------------------------- GALLERY LOADING --------------------------------------
+print('GALLERY LOADING')
+
+async def load_gallery() -> None:
+    print("Creating first room")
+    await create_room((0, 0), 2)
+    print("Creating second room")
+    await create_room((0, 1), 3)
+    await create_room((1, 0), 1)
+    await create_room((1, 1), 0)
+
+
+""" def load_room(r: int = 3) -> None:
+    '''
+    Loads all rooms which are at r distance from the current room
+    '''
+    print("Loading rooms...")
+    for room in ROOMS:
+        if room not in LOADED_ROOMS:
+            if room.position.distanceTo(CAMERA.position) < r * ROOM_SIZE[0]:
+                room.visible = True
+                LOADED_ROOMS.append(room)
+                print(f"Room {room.name} loaded at position {room.position.toArray()}")
+            else:
+                print(f"Room {room.name} is too far away, not loading it.")
+    pass
+ """
 
 async def main():
+    global CURRENT_ROOM
+
+    while not SCENE.getObjectByName("room_0_0"):
+        print("Waiting for the initial room to load...")
+        await asyncio.sleep(0.05)
+    print("Initial room loaded")
+    CURRENT_ROOM = SCENE.getObjectByName("room_0_0")
+    # load_room()
+
     clock = THREE.Clock.new()
     while True:
         delta = clock.getDelta()
         velocity = move_character(delta)
         if check_collision(velocity, delta):
             CAMERA.position.addScaledVector(velocity, delta)
-        # else:
-        #     print("COLLISION DETECTED")
 
         RENDERER.render(SCENE, CAMERA)
         await asyncio.sleep(0.02)
 
 
 if __name__ == "__main__":
-    generate_lights()
-    load_gallery()
-    asyncio.ensure_future(load_images_from_listing())
-
+    print("Loading gallery...")
+    asyncio.ensure_future(load_gallery())
+    print("Starting main loop...")
     asyncio.ensure_future(main())
