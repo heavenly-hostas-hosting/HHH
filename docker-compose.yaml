@@ -20,15 +20,14 @@ services:
     image: zauberzeug/nicegui:latest
     restart: always
     ports:
-        - 9080:8080
+      - 9080:8080
     environment:
-        - PUID=1000 # change this to your user id
-        - PGID=1000 # change this to your group id
+      - PUID=1000 # change this to your user id
+      - PGID=1000 # change this to your group id
     volumes:
-        - ./packages/editor:/app
+      - ./packages/editor:/app
     # networks:
-    #     - shared-net
-
+    #   - shared-net
 
   studio:
     container_name: supabase-studio
@@ -239,7 +238,6 @@ services:
 
 volumes:
   db-config:
-
 # networks:
 #   shared-net:
 #     external: true
