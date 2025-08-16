@@ -256,7 +256,7 @@ def create_plane(texture):
 
 V3 = tuple[float, float, float]
 V2 = tuple[float, float]
-PAINTING_SLOTS: dict[int, tuple[V3, V3, V2]] = {}
+PAINTING_SLOTS: list[tuple[V3, V3, V2]] = []
 
 # doesnt work, idk why
 """
@@ -284,7 +284,7 @@ def create_borders(plane):
 
 
 async def snap_to_slot(photo, slot: int):
-    while slot not in PAINTING_SLOTS:
+    while not PAINTING_SLOTS:
         await asyncio.sleep(0.05)
     (x, y, z), (nx, ny, nz), (w, h) = PAINTING_SLOTS[slot]
     photo.position.x = x
@@ -326,32 +326,34 @@ def load_gallery():
         MODULAR_GROUP.add(obj)
 
         # Backface culling
-        assert obj.children[0].name == "Cube"
+        assert obj.children[0].name.startswith("Cube")
         for v in obj.children[0].children:
             CUBES.append(v)
             v.material.side = THREE.FrontSide
 
         for v in obj.children[1:]:
-            id_ = int(v.name[-3:])
+            if not v.name.startswith("pic"):
+                continue
             position: V3 = v.position.x, v.position.y, v.position.z
 
             n_array = v.geometry.attributes.normal.array
-            # Y-up/Z-up shenanigans
-            normal: V3 = (n_array[0], n_array[2], n_array[1])
+            # Beware possible Y-up/Z-up shenanigans
+            normal: V3 = (-n_array[2], n_array[1], n_array[0])
+            id_ = int(v.name[-3:])
+            print(id_, normal)
 
             bb = v.geometry.boundingBox
             size_xyz = [abs(getattr(bb.max, i) - getattr(bb.min, i)) for i in ("x", "y", "z")]
             # Height is Z
             size_wh: V2 = (max(size_xyz[0], size_xyz[1]), (size_xyz[2]))
 
-            PAINTING_SLOTS[id_] = (position, normal, size_wh)
+            PAINTING_SLOTS.append((position, normal, size_wh))
 
             v.visible = False
 
         print(f"Loading done! Here's its component structure:")
         print(tree_print(obj))
-        print(f"Painting slots:")
-        print(list(PAINTING_SLOTS.keys()))
+        print(f"Number of painting slots:", len(PAINTING_SLOTS))
 
     def inner_progress(xhr):
         print(str(xhr.loaded) + " loaded")
@@ -361,7 +363,7 @@ def load_gallery():
 
     loader = GLTFLoader.new()
     loader.load(
-        "./assets/gallery.glb",
+        "./assets/gallery_2c.glb",
         create_proxy(inner_loader),
         create_proxy(inner_progress),
         create_proxy(inner_error),
