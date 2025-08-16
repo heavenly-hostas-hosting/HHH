@@ -4,25 +4,24 @@
 ## DOCS
 ## https:#threejs.org/docs/
 
-from pyodide.ffi import to_js, create_proxy  # pyright: ignore[reportMissingImports]
-from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
-from pyscript import when, window, document  # pyright: ignore[reportMissingImports]
+import asyncio
+import json
+from collections import defaultdict
+from enum import Enum
+
 from js import (  # pyright: ignore[reportMissingImports]
-    Math,
     THREE,
+    GLTFLoader,
+    Math,
     # LineSegments2,
     # LineMaterial,
     Object,
-    console,
-    GLTFLoader,
     PointerLockControls,
+    console,
 )
-
-
-from collections import defaultdict
-from enum import Enum
-import asyncio
-import json
+from pyodide.ffi import create_proxy, to_js  # pyright: ignore[reportMissingImports]
+from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
+from pyscript import document, when, window  # pyright: ignore[reportMissingImports]
 
 
 def log(*msgs):
@@ -78,20 +77,34 @@ document.getElementById("instructions").addEventListener("click", create_proxy(C
 CONTROLS.addEventListener(
     "lock",
     create_proxy(
-        lambda x: setattr(
-            document.getElementById("instructions").style,
-            "display",
-            "none",
+        lambda _: (
+            setattr(
+                document.getElementById("instructions").style,
+                "display",
+                "none",
+            ),
+            setattr(
+                document.getElementById("editor").style,
+                "display",
+                "none",
+            ),
         ),
     ),
 )
 CONTROLS.addEventListener(
     "unlock",
     create_proxy(
-        lambda x: setattr(
-            document.getElementById("instructions").style,
-            "display",
-            "block",
+        lambda _: (
+            setattr(
+                document.getElementById("instructions").style,
+                "display",
+                "block",
+            ),
+            setattr(
+                document.getElementById("editor").style,
+                "display",
+                "block",
+            ),
         ),
     ),
 )
@@ -103,10 +116,8 @@ KEY_MAPPINGS: dict[INPUTS, set[str]] = {
     INPUTS.LEFT: {"KeyH", "KeyA", "ArrowLeft"},
     INPUTS.RIGHT: {"KeyL", "KeyD", "ArrowRight"},
     INPUTS.BACK: {"KeyJ", "KeyS", "ArrowDown"},
-    #
     INPUTS.UP: {"Space"},
     INPUTS.DOWN: {"ShiftLeft", "ShiftRight"},
-    #
     INPUTS.RUN: {"KeyZ"},
 }
 KEY_STATES: dict[str, bool] = defaultdict(bool)
@@ -242,7 +253,7 @@ def create_plane(texture):
         {
             "map": texture,
             "transparent": True,
-        }
+        },
     )
 
     geometry = THREE.PlaneGeometry.new(1, 1, 1)
@@ -348,9 +359,9 @@ def load_gallery():
 
             v.visible = False
 
-        print(f"Loading done! Here's its component structure:")
+        print("Loading done! Here's its component structure:")
         print(tree_print(obj))
-        print(f"Painting slots:")
+        print("Painting slots:")
         print(list(PAINTING_SLOTS.keys()))
 
     def inner_progress(xhr):

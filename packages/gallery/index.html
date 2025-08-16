@@ -34,7 +34,7 @@
             window.LineMaterial = LineMaterial;
             window.GLTFLoader = GLTFLoader;
             window.PointerLockControls = PointerLockControls;
-          
+
         </script>
         <!-- for splashscreen -->
         <link rel="stylesheet" href="assets/css/style.css">
@@ -43,6 +43,8 @@
             addEventListener('py:ready', () => loading.close());
             const instructions = document.getElementById('instructions')
             addEventListener('py:ready', () => instructions.style.display='block');
+            const editor = document.getElementById('editor')
+            addEventListener('py:ready', () => editor.style.display='block');
             loading.showModal();
         </script>
 
@@ -57,9 +59,9 @@
         </dialog>
 
         <div id="instructions">Click here to look around!</div>
+        <div id="editor"><a href="assets/editor.html">Go to editor!</a></div>
         <script type="py" src="./main.py" config="./pyscript.toml"></script>
 
     </body>
 
 </html>
-
