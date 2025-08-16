@@ -454,7 +454,7 @@ def stop_path(_: MouseEvent) -> None:
         save_history()
 
 
-@when("mouseup", "#image-canvas")
+@when("mouseup", "body")
 def drop_media(event: MouseEvent) -> None:
     """Place text or clipping.
 
@@ -504,16 +504,12 @@ def leaves_canvas(event: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-    if not ctx.drawing:
+    if not ctx.drawing or ctx.clipping:
         return
     if ctx.type == "smooth" and ctx.action != "smudge":  # "pen" or "eraser"
         x, y = get_canvas_coords(event)
         ctx.lineTo(x, y)
         ctx.stroke()
-
-    ctx.drawing = False
-    ctx.smudge_data = None
-    save_history()
 
 
 @when("mousedown", "#image-canvas")
