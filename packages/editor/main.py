@@ -327,6 +327,52 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                         text_input.set_value(""),
                     ),
                 )
+
+            async def publish() -> None:
+                """Fetch the API and publish the canvas."""
+                ui.notify("Publishing...")
+                try:
+                    response_ok = await ui.run_javascript(
+                        """
+                        const format = "image/webp";
+                        const quality = 0.7;  // 70%
+
+                        const canvas = document.querySelector("#image-canvas");
+                        const blob = await new Promise((r) => canvas.toBlob(r, format, quality));
+
+                        if (blob === null) {
+                            return false;
+                        }
+
+                        // Use FormData so FastAPI can read it as UploadFile
+                        const form = new FormData();
+                        form.append("image", blob, "canvas.webp");
+
+                        response = await fetch(
+                            "http://cj12.matiiss.com/api/publish",
+                            {
+                                method: "POST",
+                                credentials: "include",
+                                body: form,
+                            },
+                        ).catch((e) => console.error(e));
+
+                        return response.ok;
+                        """,
+                        timeout=60,
+                    )
+
+                    if not response_ok:
+                        ui.notify("Failed to publish!", type="negative")
+                        return
+
+                    ui.notify("Artwork published successfully!", type="positive")
+
+                except Exception as e:  # noqa: BLE001
+                    ui.notify(f"An error occurred: {e}", type="negative")
+
+            ui.button("Publish", on_click=publish)
+
     ui.add_body_html("""
         <py-config>
             [[fetch]]
@@ -351,4 +397,5 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         font_family.disable()
 
 
-ui.run()
+if __name__ in {"__main__", "__mp_main__"}:
+    ui.run(port=9010, title="HHH Editor")
