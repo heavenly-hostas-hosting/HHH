@@ -1,4 +1,6 @@
 # This should be under the other imports but because it isn't imported in the traditional way, it's above them.
+from math import cos, pi, sin
+from typing import Literal
 from canvas_ctx import CanvasContext, ImageBitmap  # pyright: ignore[reportMissingImports] #
 
 # Following imports have the ignore flag as they are not pip installed
@@ -10,6 +12,7 @@ from js import (  # pyright: ignore[reportMissingImports]
     Math,
     MouseEvent,
     Object,
+    Path2D,
     createImageBitmap,
     document,
     window,
@@ -76,6 +79,9 @@ ctx.prev_operation = "source-over"
 ctx.text_settings = {"bold": False, "italics": False, "size": 50, "font-family": "Arial"}
 ctx.clipping = False
 ctx.moving_clip = False
+
+ctx.drawing_shape = False  # TODO: check
+
 ctx.start_coords = [0, 0]
 ctx.prev_stroke_style = "black"
 ctx.prev_line_width = 5
@@ -154,7 +160,6 @@ def draw_pixel(x: float, y: float) -> None:
     Args:
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     ctx.fillStyle = ctx.strokeStyle
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
@@ -169,7 +174,6 @@ def show_action_icon(x: float, y: float) -> bool:
 
     Returns:
         bool: If True is returned mousemove doesn't do anything else
-
     """
 
     def draw_clip(img_bitmap: ImageBitmap) -> None:
@@ -286,7 +290,6 @@ def regular_icon_show(x: float, y: float) -> None:
     Args:
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     if ctx.type == "smooth":
         buffer_ctx.beginPath()
@@ -340,7 +343,6 @@ def draw_smudge(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The javascript mouse event
-
     """
     x, y = get_canvas_coords(event)
     # draw the pevious smudge data at the current xy.
@@ -357,7 +359,6 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
 
     Returns:
         tuple[float, float]: The x and y coordinates
-
     """
     x = (event.pageX - ctx.bounding_rect.left) * ctx.scaled_by
     y = (event.pageY - ctx.bounding_rect.top) * ctx.scaled_by
@@ -373,14 +374,13 @@ def start_path(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if event.button != 0:
         return
 
     if ctx.moving_image:
         return
-    
+
     ctx.drawing = True
 
     x, y = get_canvas_coords(event)
@@ -392,13 +392,154 @@ def start_path(event: MouseEvent) -> None:
         ctx.moveTo(x, y)
 
 
+def get_triangle_shape_points(
+    x: float | int,
+    y: float | int,
+    dx: float | int,
+    dy: float | int,
+):
+    """Get the points in a triangle shape given the start coordinate x,y and
+    the size of the triangle dx, dy."""
+    top_mid_point = (x + (dx / 2), y)
+    bot_left_point = (x, y + dy)
+    bot_right_point = (x + dx, y + dy)
+    return [top_mid_point, bot_left_point, bot_right_point]
+
+
+def get_star_shape_points(
+    x: float | int,
+    y: float | int,
+    dx: float | int,
+    dy: float | int,
+):
+    """Get the points in a star shape given the start coordinate x,y and the
+    size of the star dx, dy."""
+    center_x = x + dx / 2
+    center_y = y + dy / 2
+
+    outer_radius_x = dx / 2
+    inner_radius_x = outer_radius_x / 2
+
+    outer_radius_y = dy / 2
+    inner_radius_y = outer_radius_y / 2
+
+    NO_OF_STAR_POINTS = 5
+
+    points: list[tuple[float, float]] = []
+
+    for i in range(NO_OF_STAR_POINTS * 2):
+        angle = i * pi / NO_OF_STAR_POINTS  # 10 points in the star including inner points.
+
+        radius_x = outer_radius_x if i % 2 == 0 else inner_radius_x
+        radius_y = outer_radius_y if i % 2 == 0 else inner_radius_y
+
+        px = center_x + cos(angle) * radius_x
+        py = center_y + sin(angle) * radius_y
+
+        points.append((px, py))
+
+    return points
+
+
+def draw_python_logo(
+    x: float | int,
+    y: float | int,
+    dx: float | int,
+    dy: float | int,
+):
+    """Draw python logo."""
+    buffer_ctx.save()
+    buffer_ctx.translate(x, y)
+    buffer_ctx.scale(dx / 40, dy / 40)
+
+    # the two rounded rects forming a cross.
+    buffer_ctx.beginPath()
+    buffer_ctx.roundRect(10, 0, 20, 40, [10, 5])
+    buffer_ctx.roundRect(0, 10, 40, 20, [5, 10])
+    buffer_ctx.fill()
+
+    # the two eyes for each of the snakey bois. O.o
+    buffer_ctx.beginPath()
+    buffer_ctx.arc(14.5, 5, 1.85, 0, 2 * pi)
+    buffer_ctx.arc(25.5, 35, 1.85, 0, 2 * pi)
+    buffer_ctx.fillStyle = "white"
+    buffer_ctx.fill()
+
+    # the lines that make the mouth of the snakey bois. :)
+    buffer_ctx.lineWidth = 1
+    buffer_ctx.beginPath()
+    buffer_ctx.moveTo(10, 9.5)
+    buffer_ctx.lineTo(20, 9.5)
+    buffer_ctx.moveTo(20, 30.5)
+    buffer_ctx.lineTo(30, 30.5)
+    buffer_ctx.strokeStyle = "white"
+    buffer_ctx.stroke()
+
+    # The lines the seperates the snakey bois from one another. :) :)
+    buffer_ctx.beginPath()
+    buffer_ctx.moveTo(9.5, 30)
+    buffer_ctx.bezierCurveTo(9.5, 20, 12, 20, 19.5, 20)
+    buffer_ctx.bezierCurveTo(28, 20, 30.5, 20, 30.5, 10)
+    buffer_ctx.stroke()
+
+    buffer_ctx.restore()
+    return
+
+
+def draw_shape(
+    x: float | int,
+    y: float | int,
+    shape_type: Literal["rectangle", "triangle", "star"],
+) -> None:
+    """Draw a shape to the buffer_ctx sized by the x,y given relative to the
+    start x,y when the canvas was initially clicked."""
+    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+    init_x, init_y = ctx.start_coords
+    dx = x - init_x
+    dy = y - init_y
+    match shape_type:
+        case "rectangle":
+            buffer_ctx.fillRect(init_x, init_y, dx, dy)
+            return
+        case "circle":
+            buffer_ctx.ellipse(
+                init_x + dx / 2,
+                init_y + dy / 2,
+                abs(dx),
+                abs(dy),
+                0,
+                0,
+                2 * pi,
+            )
+            buffer_ctx.fill()
+            return
+        case "python":
+            draw_python_logo(x, y, dx, dy)
+            return
+
+        case "triangle":
+            points = get_triangle_shape_points(init_x, init_y, dx, dy)
+
+        case "star":
+            points = get_star_shape_points(init_x, init_y, dx, dy)
+
+    buffer_ctx.beginPath()
+    buffer_ctx.moveTo(points[0][0], points[0][1])
+    for px, py in points[1:]:
+        buffer_ctx.lineTo(px, py)
+
+    buffer_ctx.closePath()
+    buffer_ctx.fill()
+    buffer_ctx.stroke()
+    return
+
+
 @when("mousemove", "#image-canvas")
 def mouse_tracker(event: MouseEvent) -> None:
     """Draw the path following the mouse.
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     x, y = get_canvas_coords(event)
     ctx.current_position = [x, y]
@@ -416,6 +557,9 @@ def mouse_tracker(event: MouseEvent) -> None:
         return
     if not ctx.drawing:
         return
+    if ctx.drawing_shape:
+        draw_shape(x, y, ctx.action)
+        return
     draw_action(event, x, y)
 
 
@@ -426,13 +570,12 @@ def draw_action(event: MouseEvent, x: float, y: float) -> None:
         event (MouseEvent): Mouse event
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     match ctx.type:
         case "smooth":
             if ctx.action == "smudge":
                 draw_smudge(event)
-            elif ctx.action in ("pen", "eraser"):  # this is "pen" or "eraser"
+            elif ctx.action in ("pen", "eraser"):
                 ctx.lineTo(x, y)
                 ctx.stroke()
         case "pixel":
@@ -448,7 +591,6 @@ def stop_path(_: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if ctx.drawing and not ctx.clipping:
         ctx.drawing = False
@@ -461,14 +603,13 @@ def drop_media(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): Mouse event
-
     """
+    x, y = get_canvas_coords(event)
     if ctx.text_placed:
         ctx.writing_text = False
     if ctx.clipping:
         ctx.clipping = False
         ctx.moving_clip = True
-        x, y = get_canvas_coords(event)
         ctx.prev_data = ctx.getImageData(
             ctx.start_coords[0],
             ctx.start_coords[1],
@@ -481,6 +622,27 @@ def drop_media(event: MouseEvent) -> None:
             x - ctx.start_coords[0],
             y - ctx.start_coords[1],
         )
+    if ctx.drawing_shape:
+        ctx.drawing_shape = False
+
+        buffer_image_data = buffer_ctx.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+        )
+
+        createImageBitmap(buffer_image_data).then(
+            lambda img_bitmap: ctx.drawImage(
+                img_bitmap,
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+            ),
+        )
+
+        save_history()
 
 
 @when("mouseenter", "#image-canvas")
@@ -489,7 +651,6 @@ def start_reentry_path(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): Mouse event
-
     """
     if ctx.drawing:
         x, y = get_canvas_coords(event)
@@ -503,10 +664,10 @@ def leaves_canvas(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
-    if not ctx.drawing or ctx.clipping:
+    if not ctx.drawing or ctx.clipping or ctx.drawing_shape:
         return
+
     if ctx.type == "smooth" and ctx.action != "smudge":  # "pen" or "eraser"
         x, y = get_canvas_coords(event)
         ctx.lineTo(x, y)
@@ -519,7 +680,6 @@ def canvas_click(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if event.button != 0:
         return
@@ -539,6 +699,11 @@ def canvas_click(event: MouseEvent) -> None:
             ctx.lineWidth = 5
             buffer_ctx.strokeStyle = "black"
             buffer_ctx.lineWidth = 5
+
+        elif ctx.action in ("circle", "rectangle", "triangle", "star", "python"):
+            ctx.drawing_shape = True
+            ctx.start_coords = [x, y]
+
         else:
             ctx.beginPath()
             ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
@@ -560,7 +725,6 @@ def special_actions(x: float, y: float) -> bool:
 
     Returns:
         bool: Whether to skip the regular drawing process or not
-
     """
     if ctx.moving_image:
         draw_image(x, y)
@@ -649,7 +813,6 @@ def draw_image(x: float, y: float) -> None:
     Args:
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     ctx.moving_image = False
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -692,7 +855,6 @@ def colour_change(_: Event) -> None:
 
     Args:
         _ (Event): Change event
-
     """
     ctx.strokeStyle = window.pen.colour
     ctx.fillStyle = window.pen.colour
@@ -706,7 +868,6 @@ def width_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
-
     """
     ctx.lineWidth = int(event.target.getAttribute("aria-valuenow"))
     buffer_ctx.lineWidth = ctx.lineWidth
@@ -718,7 +879,6 @@ def action_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
-
     """
     ctx.action = event.target.getAttribute("value")
     match ctx.action:
@@ -738,7 +898,6 @@ def add_text(_: Event) -> None:
 
     Args:
         _ (Event): Add text event
-
     """
     ctx.text_value = text_input.value
     if ctx.text_value:
@@ -760,7 +919,6 @@ def type_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
-
     """
     ctx.type = event.target.getAttribute("value")
     if ctx.type == "smooth":
@@ -786,7 +944,6 @@ def reset_board(_: Event) -> None:
 
     Args:
         _ (Event): Reset event
-
     """
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
@@ -797,7 +954,6 @@ def download_image(_: Event) -> None:
 
     Args:
         _ (Event): Click event
-
     """
     link = document.createElement("a")
     link.download = "download.avif"
@@ -812,7 +968,6 @@ def upload_image(e: Event) -> None:
 
     Args:
         e (Event): Upload event
-
     """
     ctx.prev_operation = ctx.globalCompositeOperation
     ctx.globalCompositeOperation = "source-over"
@@ -829,7 +984,6 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
         _ (Event): Resize event
         keep_content (bool): Flag to keep the existing content. It's technically not a dict. It's an Object,
                             but I can't type hint with it.
-
     """
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     line_width = ctx.lineWidth
@@ -885,11 +1039,11 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
 
 @create_proxy
 def handle_scroll(e: Event) -> None:
-    """Handle scrolling on the canvas. Used to increase/decrease the size of images/text etc.
+    """Handle scrolling on the canvas. Used to increase/decrease the size of
+    images/text etc.
 
     Args:
         e (Event): Scroll event
-
     """
     e.preventDefault()
     x, y = get_canvas_coords(e)
@@ -937,7 +1091,6 @@ def keydown_event(event: KeyboardEvent) -> None:
 
     Args:
         event (KeyboardEvent): Keydown event
-
     """
     if event.key == "Backspace":
         if ctx.moving_image:
@@ -974,7 +1127,6 @@ def keyup_event(event: KeyboardEvent) -> None:
 
     Args:
         event (KeyboardEvent): Keyup event
-
     """
     if event.key == "Alt":
         ctx.is_rotating = False

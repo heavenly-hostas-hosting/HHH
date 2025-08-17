@@ -60,7 +60,7 @@ class CanvasContext:
     # Custom attributes
     scaled_by: float = 2  # Better resolution
     drawing: bool = False
-    action: Literal["pen", "eraser", "smudge"] = "pen"
+    action: Literal["pen", "eraser", "smudge", "rectangle", "triangle", "star"] = "pen"
     type: Literal["smooth", "pixel"] = "smooth"
     current_img: Any
     bounding_rect: Any
