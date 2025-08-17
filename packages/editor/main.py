@@ -22,7 +22,7 @@ app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 app.add_static_files("/static", pathlib.Path(__file__).parent / "static")
 
 
-@ui.page("/")
+@ui.page("/", response_timeout=10)
 async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below lines need to be in this function for private viewing of the page
     """Index page for the editor."""
 
@@ -381,6 +381,46 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         except Exception as e:  # noqa: BLE001
             ui.notify(f"An error occurred: {e}", type="negative")
 
+    async def check_login_status() -> None:
+        try:
+            response = await ui.run_javascript(
+                """
+                response = await fetch(
+                    "http://cj12.matiiss.com/api/status",
+                    {
+                        method: "GET",
+                        credentials: "include",
+                    },
+                ).catch((e) => console.error(e));
+
+                return response;
+                """,
+                timeout=60,
+            )
+
+            if not response.ok:
+                ui.notify("Failed to check status!", type="negative")
+                return
+
+            if response["logged_in"]:
+                username.set_text(response["username"])
+                register_button.move(hidden_buttons)
+                login_button.move(hidden_buttons)
+
+                publish_button.move(shown_buttons)
+                logout_button.move(shown_buttons)
+            else:
+                username.set_text("")
+                register_button.move(shown_buttons)
+                login_button.move(shown_buttons)
+
+                publish_button.move(hidden_buttons)
+                logout_button.move(hidden_buttons)
+                ui.notify("You were logged out. Please login again.")
+
+        except Exception as e:  # noqa: BLE001
+            ui.notify(f"An error occurred: {e}", type="negative")
+
     ui.add_head_html("""
         <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
         <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
@@ -418,6 +458,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
     with ui.row().style("display: flex; width: 100%;"):
         # Page controls
         with ui.column().style("flex-grow: 1; flex-basis: 0;"):
+            username = ui.label("")
+            ui.separator().classes("w-full")
             with ui.row():
                 dark = ui.dark_mode()
                 ui.switch("Dark mode").bind_value(dark)
@@ -554,6 +596,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
         publish_button.move(shown_buttons)
         logout_button.move(shown_buttons)
+
+    ui.timer(5.0, check_login_status)
 
 
 if __name__ in {"__main__", "__mp_main__"}:
