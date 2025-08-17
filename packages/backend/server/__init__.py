@@ -4,11 +4,11 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from gotrue import CodeExchangeParams, SignInWithOAuthCredentials, SignInWithOAuthCredentialsOptions
-from gotrue.errors import AuthSessionMissingError
+from pydantic import BaseModel
 
-from . import env, gh, sb
+from . import env, gh, pg, sb
 
 app = FastAPI()
 
@@ -109,18 +109,11 @@ async def publish(  # noqa: C901
 ) -> Response:
     client = await sb.get_session(http_request)
 
-    user_identities = await client.auth.get_user_identities()
     client_session = await client.auth.get_session()
-    if isinstance(user_identities, AuthSessionMissingError) or client_session is None:
+    if client_session is None:
         raise HTTPException(status_code=401, detail="User not authenticated")
 
-    for identity in user_identities.identities:
-        if identity.provider == "github":
-            gh_identity = identity
-            break
-    else:
-        raise HTTPException(status_code=401, detail="GitHub identity not found... how did you get here?")
-
+    gh_identity = await sb.get_github_identity(client)
     user_name = gh_identity.identity_data["user_name"]
     app_token = gh.get_app_token()
 
@@ -157,17 +150,23 @@ async def publish(  # noqa: C901
 
     now = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     random_sequence = secrets.token_hex(8)
-    file_name = f"{now}_{random_sequence}"
+    file_stem = f"{now}_{random_sequence}"
+    file_name = f"{file_stem}.webp"
 
-    await gh.commit_and_create_pull_request(
+    commit_hash = await gh.commit_and_create_pull_request(
         root_app_installation_token=root_app_installation_token,
         app_installation_token=app_installation_token,
         fork_owner=user_name,
         fork_name=repository["name"],
-        new_branch=file_name,
+        new_branch=file_stem,
         file_path=file_name,
         file_content=await image.read(),
         pr_title=f"Publish {file_name}",
+    )
+    await pg.github_files_insert_row(
+        username=user_name,
+        filename=file_name,
+        commit_hash=commit_hash,
     )
 
     response = Response(content="Publish endpoint hit", status_code=200)
@@ -180,8 +179,73 @@ async def publish(  # noqa: C901
     return response
 
 
-@app.post("/verify_pr")
-async def verify_pr() -> ...: ...
+class LoginStatusResponse(BaseModel):
+    username: str | None
+    logged_in: bool
+
+
+@app.get("/status", response_model=LoginStatusResponse)
+async def status(http_request: Request) -> JSONResponse:
+    try:
+        client = await sb.get_session(http_request)
+        client_session = await client.auth.get_session()
+        if client_session is None:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        gh_identity = await sb.get_github_identity(client)
+    except HTTPException as e:
+        if e.status_code != 401:
+            raise
+
+        return JSONResponse(
+            content=LoginStatusResponse(
+                username=None,
+                logged_in=False,
+            ).model_dump()
+        )
+
+    user_name = gh_identity.identity_data["user_name"]
+    response = JSONResponse(
+        content=LoginStatusResponse(
+            username=user_name,
+            logged_in=True,
+        ).model_dump()
+    )
+    sb.set_response_token_cookies_(
+        response,
+        access_token=client_session.access_token,
+        refresh_token=client_session.refresh_token,
+    )
+
+    return response
+
+
+class VerifyPRResponse(BaseModel):
+    is_valid: bool
+
+
+@app.get("/verify_pr")
+async def verify_pr(
+    filename: Annotated[str, Query()],
+    commit_hash: Annotated[str, Query()],
+) -> VerifyPRResponse:
+    is_valid = await pg.github_files_check_exists(
+        filename=filename,
+        commit_hash=commit_hash,
+    )
+
+    return VerifyPRResponse(is_valid=is_valid)
+
+
+class ArtworksResponse(BaseModel):
+    artworks: list[tuple[str, str]]
+
+
+@app.get("/artworks")
+async def artworks() -> ArtworksResponse:
+    works = await pg.github_files_get_all()
+
+    return ArtworksResponse(artworks=works)
 
 
 if __name__ == "__main__":
