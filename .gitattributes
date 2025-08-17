@@ -2,3 +2,4 @@
 *.blend binary
 # Model binaries
 *.glb binary
+*.hdr binary
