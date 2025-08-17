@@ -380,6 +380,7 @@ def start_path(event: MouseEvent) -> None:
 
     if ctx.moving_image:
         return
+    
     ctx.drawing = True
 
     x, y = get_canvas_coords(event)
@@ -449,7 +450,7 @@ def stop_path(_: MouseEvent) -> None:
         event (MouseEvent): The mouse event
 
     """
-    if ctx.drawing:
+    if ctx.drawing and not ctx.clipping:
         ctx.drawing = False
         save_history()
 
@@ -628,7 +629,6 @@ def special_actions(x: float, y: float) -> bool:
                 -y,
             )
             ctx.rotation = 0
-            save_history()
 
         createImageBitmap(ctx.prev_data).then(draw_clip)
         ctx.setLineDash([])
