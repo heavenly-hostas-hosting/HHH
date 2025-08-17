@@ -36,3 +36,6 @@ build/
 
 # supabase volumes
 volumes/
+
+# secrets
+*.pem
