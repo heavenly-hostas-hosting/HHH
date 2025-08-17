@@ -19,6 +19,7 @@ global_vars = {
 }
 
 app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
+app.add_static_files("/static", pathlib.Path(__file__).parent / "static")
 
 
 @ui.page("/")
@@ -204,6 +205,57 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             )
         dialog.open()
 
+    def show_registration_menu() -> None:
+        with ui.dialog() as dialog, ui.card():
+            with ui.card_section():
+                with ui.column():
+                    ui.html(
+                        """
+                        <p>To register you must have a GitHub account.</p>
+                        <p>
+                            <small>If you don't have a GitHub account yet, you can create one <a href="https://github.com/signup">here</a>.</small>
+                        </p>
+                        <p>
+                            <small>Already registered? <a href="https://github.com/login">Log In instead</a>.</small>
+                        </p>
+                        <br>
+                        <p>Follow these steps to complete registration:</p>
+                        
+                        <ol>
+                            <li>
+                                Go to 
+                                <a href="https://github.com/heavenly-hostas-hosting/HHH">
+                                    https://github.com/heavenly-hostas-hosting/HHH
+                                </a> and create a fork of the repository.
+                            </li>
+                            <li>
+                                Head over to 
+                                <a href="https://github.com/apps/pydis-cj12-heavenly-hostas-app/installations/new">
+                                    the app installation link
+                                </a> to 
+                                authorize and install our GitHub app, make sure to only select the repository you 
+                                forked.
+                            </li>
+                            <li>You can now Sign in with GitHub.</li>
+                        </ol>
+                        """
+                    ).classes("registration-menu")
+                    ui.space()
+                    ui.separator().classes("w-full")
+                    ui.space()
+                    ui.label("Step By Step Reference Images")
+                    with ui.expansion("Forking The Repository").classes("w-full"):
+                        ui.image("/static/forking-1.png")
+                        ui.image("/static/forking-2.png")
+                    with ui.expansion("Installing The Application").classes("w-full"):
+                        ui.image("/static/installing-app.png")
+
+            ui.button(
+                "Close",
+                on_click=dialog.close,
+            )
+        dialog.open()
+
     async def publish() -> None:
         """Fetch the API and publish the canvas."""
         ui.notify("Publishing...")
@@ -247,11 +299,106 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         except Exception as e:  # noqa: BLE001
             ui.notify(f"An error occurred: {e}", type="negative")
 
+    async def login() -> None:
+        """Fetch the API and login."""
+        ui.notify("Logging in...")
+        try:
+            response_ok = await ui.run_javascript(
+                """
+                response = await fetch(
+                    "http://cj12.matiiss.com/api/login",
+                    {
+                        method: "GET",
+                        credentials: "include",
+                    },
+                ).catch((e) => console.error(e));
+
+                return response.ok;
+                """,
+                timeout=60,
+            )
+
+            if not response_ok:
+                ui.notify("Failed to login!", type="negative")
+                return
+
+            await ui.run_javascript(
+                """
+                sessionStorage.setItem("cj12-hhh-logged-in", "true");
+                """,
+                timeout=60,
+            )
+
+            ui.notify("Logged in successfully!", type="positive")
+
+            register_button.move(hidden_buttons)
+            login_button.move(hidden_buttons)
+
+            publish_button.move(shown_buttons)
+            logout_button.move(shown_buttons)
+
+        except Exception as e:  # noqa: BLE001
+            ui.notify(f"An error occurred: {e}", type="negative")
+
+    async def logout() -> None:
+        """Fetch the API and logout."""
+        ui.notify("Logging out...")
+        try:
+            response_ok = await ui.run_javascript(
+                """
+                response = await fetch(
+                    "http://cj12.matiiss.com/api/logout",
+                    {
+                        method: "GET",
+                        credentials: "include",
+                    },
+                ).catch((e) => console.error(e));
+
+                return response.ok;
+                """,
+                timeout=60,
+            )
+
+            if not response_ok:
+                ui.notify("Failed to logout!", type="negative")
+                return
+
+            await ui.run_javascript(
+                """
+                sessionStorage.setItem("cj12-hhh-logged-in", "false");
+                """,
+                timeout=60,
+            )
+
+            ui.notify("Logged out successfully!", type="positive")
+
+            register_button.move(shown_buttons)
+            login_button.move(shown_buttons)
+
+            publish_button.move(hidden_buttons)
+            logout_button.move(hidden_buttons)
+
+        except Exception as e:  # noqa: BLE001
+            ui.notify(f"An error occurred: {e}", type="negative")
+
     ui.add_head_html("""
         <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
         <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
-                    <style>
-            #loading { outline: none; border: none; background: transparent }
+        <style>
+            #loading { 
+                outline: none; 
+                border: none; 
+                background: transparent;
+            }
+            
+            .registration-menu a {
+                color: blue;
+                text-decoration: underline;
+            }
+            
+            .registration-menu li {
+                list-style-type: decimal;
+            }
         </style>
         <script type="module">
             const loading = document.getElementById('loading');
@@ -295,7 +442,12 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 on_change=lambda e: change_type(mode_value=e.value),
             ).props("id='type-select'")
 
-            ui.button("Publish", on_click=publish)
+            with ui.row().props("id='shown-buttons'") as shown_buttons:
+                register_button = ui.button("Register", on_click=show_registration_menu)
+                login_button = ui.button("Login", on_click=login)
+            with ui.row().props("id='hidden-buttons'").style("display: none") as hidden_buttons:
+                publish_button = ui.button("Publish", on_click=publish)
+                logout_button = ui.button("Logout", on_click=logout)
 
         with ui.element("div").style("position: relative;"):
             ui.element("canvas").props("id='image-canvas'").style(
@@ -395,6 +547,13 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         bold_checkbox.disable()
         italics_checkbox.disable()
         font_family.disable()
+    logged_in = await ui.run_javascript("return sessionStorage.getItem('cj12-hhh-logged-in');")
+    if logged_in == "true":
+        register_button.move(hidden_buttons)
+        login_button.move(hidden_buttons)
+
+        publish_button.move(shown_buttons)
+        logout_button.move(shown_buttons)
 
 
 if __name__ in {"__main__", "__mp_main__"}:
