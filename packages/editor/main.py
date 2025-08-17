@@ -204,6 +204,49 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             )
         dialog.open()
 
+    async def publish() -> None:
+        """Fetch the API and publish the canvas."""
+        ui.notify("Publishing...")
+        try:
+            response_ok = await ui.run_javascript(
+                """
+                const format = "image/webp";
+                const quality = 0.7;  // 70%
+
+                const canvas = document.querySelector("#image-canvas");
+                const blob = await new Promise((r) => canvas.toBlob(r, format, quality));
+
+                if (blob === null) {
+                    return false;
+                }
+
+                // Use FormData so FastAPI can read it as UploadFile
+                const form = new FormData();
+                form.append("image", blob, "canvas.webp");
+
+                response = await fetch(
+                    "http://cj12.matiiss.com/api/publish",
+                    {
+                        method: "POST",
+                        credentials: "include",
+                        body: form,
+                    },
+                ).catch((e) => console.error(e));
+
+                return response.ok;
+                """,
+                timeout=60,
+            )
+
+            if not response_ok:
+                ui.notify("Failed to publish!", type="negative")
+                return
+
+            ui.notify("Artwork published successfully!", type="positive")
+
+        except Exception as e:  # noqa: BLE001
+            ui.notify(f"An error occurred: {e}", type="negative")
+
     ui.add_head_html("""
         <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
         <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
@@ -252,6 +295,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 on_change=lambda e: change_type(mode_value=e.value),
             ).props("id='type-select'")
 
+            ui.button("Publish", on_click=publish)
+
         with ui.element("div").style("position: relative;"):
             ui.element("canvas").props("id='image-canvas'").style(
                 "border: 1px solid black; background-color: white;",
@@ -283,11 +328,11 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                         colour_values.append(colour_label)
             ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,z'")
             ui.separator().classes("w-full")
-            width_input = ui.number(label="Line Width", min=1, max=50, step=1)
+            width_input = ui.number(label="Line Width", min=1, max=100, step=1)
             width_slider = ui.slider(
                 min=1,
-                max=50,
-                value=5,
+                max=100,
+                value=1,
                 on_change=lambda _: ui.run_javascript("""
                     const event = new Event('change');
                     document.querySelector(".width-input").dispatchEvent(event);
@@ -327,51 +372,6 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                         text_input.set_value(""),
                     ),
                 )
-
-            async def publish() -> None:
-                """Fetch the API and publish the canvas."""
-                ui.notify("Publishing...")
-                try:
-                    response_ok = await ui.run_javascript(
-                        """
-                        const format = "image/webp";
-                        const quality = 0.7;  // 70%
-
-                        const canvas = document.querySelector("#image-canvas");
-                        const blob = await new Promise((r) => canvas.toBlob(r, format, quality));
-
-                        if (blob === null) {
-                            return false;
-                        }
-
-                        // Use FormData so FastAPI can read it as UploadFile
-                        const form = new FormData();
-                        form.append("image", blob, "canvas.webp");
-
-                        response = await fetch(
-                            "http://cj12.matiiss.com/api/publish",
-                            {
-                                method: "POST",
-                                credentials: "include",
-                                body: form,
-                            },
-                        ).catch((e) => console.error(e));
-
-                        return response.ok;
-                        """,
-                        timeout=60,
-                    )
-
-                    if not response_ok:
-                        ui.notify("Failed to publish!", type="negative")
-                        return
-
-                    ui.notify("Artwork published successfully!", type="positive")
-
-                except Exception as e:  # noqa: BLE001
-                    ui.notify(f"An error occurred: {e}", type="negative")
-
-            ui.button("Publish", on_click=publish)
 
     ui.add_body_html("""
         <py-config>
