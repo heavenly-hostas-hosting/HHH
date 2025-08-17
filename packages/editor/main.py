@@ -232,7 +232,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 dark = ui.dark_mode()
                 ui.switch("Dark mode").bind_value(dark)
                 ui.button(icon="help", on_click=lambda: show_help_menu()).props(
-                    "class='keyboard-shortcuts' shortcut_data='btn,?'"
+                    "class='keyboard-shortcuts' shortcut_data='btn,?'",
                 )
             ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
             ui.button("Download").props("id='download-button'")

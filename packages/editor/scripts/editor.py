@@ -392,7 +392,7 @@ def start_path(event: MouseEvent) -> None:
 
     if ctx.moving_image:
         return
-    
+
     ctx.drawing = True
 
     x, y = get_canvas_coords(event)
