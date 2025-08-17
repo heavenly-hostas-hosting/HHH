@@ -220,20 +220,20 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                         </p>
                         <br>
                         <p>Follow these steps to complete registration:</p>
-                        
+
                         <ol>
                             <li>
-                                Go to 
+                                Go to
                                 <a href="https://github.com/heavenly-hostas-hosting/HHH">
                                     https://github.com/heavenly-hostas-hosting/HHH
                                 </a> and create a fork of the repository.
                             </li>
                             <li>
-                                Head over to 
+                                Head over to
                                 <a href="https://github.com/apps/pydis-cj12-heavenly-hostas-app/installations/new">
                                     the app installation link
-                                </a> to 
-                                authorize and install our GitHub app, make sure to only select the repository you 
+                                </a> to
+                                authorize and install our GitHub app, make sure to only select the repository you
                                 forked.
                             </li>
                             <li>You can now Sign in with GitHub.</li>
@@ -277,7 +277,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 form.append("image", blob, "canvas.webp");
 
                 response = await fetch(
-                    "http://cj12.matiiss.com/api/publish",
+                    "https://cj12.matiiss.com/api/publish",
                     {
                         method: "POST",
                         credentials: "include",
@@ -287,7 +287,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
                 return response.ok;
                 """,
-                timeout=60,
+                timeout=300,
             )
 
             if not response_ok:
@@ -303,27 +303,9 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         """Fetch the API and login."""
         ui.notify("Logging in...")
         try:
-            response_ok = await ui.run_javascript(
-                """
-                response = await fetch(
-                    "http://cj12.matiiss.com/api/login",
-                    {
-                        method: "GET",
-                        credentials: "include",
-                    },
-                ).catch((e) => console.error(e));
-
-                return response.ok;
-                """,
-                timeout=60,
-            )
-
-            if not response_ok:
-                ui.notify("Failed to login!", type="negative")
-                return
-
             await ui.run_javascript(
                 """
+                window.location.href = "https://cj12.matiiss.com/api/login";
                 sessionStorage.setItem("cj12-hhh-logged-in", "true");
                 """,
                 timeout=60,
@@ -344,27 +326,9 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         """Fetch the API and logout."""
         ui.notify("Logging out...")
         try:
-            response_ok = await ui.run_javascript(
-                """
-                response = await fetch(
-                    "http://cj12.matiiss.com/api/logout",
-                    {
-                        method: "GET",
-                        credentials: "include",
-                    },
-                ).catch((e) => console.error(e));
-
-                return response.ok;
-                """,
-                timeout=60,
-            )
-
-            if not response_ok:
-                ui.notify("Failed to logout!", type="negative")
-                return
-
             await ui.run_javascript(
                 """
+                window.location.href = "https://cj12.matiiss.com/api/logout";
                 sessionStorage.setItem("cj12-hhh-logged-in", "false");
                 """,
                 timeout=60,
@@ -386,12 +350,14 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             response = await ui.run_javascript(
                 """
                 response = await fetch(
-                    "http://cj12.matiiss.com/api/status",
+                    "https://cj12.matiiss.com/api/status",
                     {
                         method: "GET",
                         credentials: "include",
                     },
                 ).catch((e) => console.error(e));
+
+                sessionStorage.setItem("cj12-hhh-logged-in", response.json()['logged_in']);
 
                 return response;
                 """,
@@ -425,17 +391,17 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
         <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
         <style>
-            #loading { 
-                outline: none; 
-                border: none; 
+            #loading {
+                outline: none;
+                border: none;
                 background: transparent;
             }
-            
+
             .registration-menu a {
                 color: blue;
                 text-decoration: underline;
             }
-            
+
             .registration-menu li {
                 list-style-type: decimal;
             }
@@ -444,6 +410,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             const loading = document.getElementById('loading');
             addEventListener('py:ready', () => loading.close());
             loading.showModal();
+
+            window.onload = () => {emitEvent('content_loaded');};
         </script>
     """)
 
@@ -589,6 +557,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         bold_checkbox.disable()
         italics_checkbox.disable()
         font_family.disable()
+
     logged_in = await ui.run_javascript("return sessionStorage.getItem('cj12-hhh-logged-in');")
     if logged_in == "true":
         register_button.move(hidden_buttons)
@@ -597,6 +566,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         publish_button.move(shown_buttons)
         logout_button.move(shown_buttons)
 
+    ui.on("content_loaded", check_login_status)
     ui.timer(5.0, check_login_status)
 
 
