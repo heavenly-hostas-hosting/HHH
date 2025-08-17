@@ -4,6 +4,7 @@ import pathlib
 import random
 
 from nicegui import app, ui
+from nicegui.client import Client
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 SPIN_COUNT = 10
@@ -21,26 +22,8 @@ app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
 
 @ui.page("/")
-def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in this function for private viewing of the page
+async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below lines need to be in this function for private viewing of the page
     """Index page for the editor."""
-    ui.add_head_html("""
-        <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
-        <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
-                    <style>
-            #loading { outline: none; border: none; background: transparent }
-        </style>
-        <script type="module">
-            const loading = document.getElementById('loading');
-            addEventListener('py:ready', () => loading.close());
-            loading.showModal();
-        </script>
-    """)
-
-    ui.add_body_html("""
-        <dialog id="loading">
-                <h1>Loading...</h1>
-        </dialog>
-    """)
 
     def do_reset(*, mode_value: bool) -> None:
         """Reset the canvas."""
@@ -174,13 +157,83 @@ def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in
             actionSelect.dispatchEvent(event);
         """)
 
+    def show_help_menu() -> None:
+        """Show help modal."""
+        with ui.dialog() as dialog, ui.card():
+            with ui.card_section():
+                ui.markdown(
+                    """
+                    There are keybinds for the editor actions.
+                    """,
+                )
+                with ui.list().props("dense separator"):
+                    ui.item("p: Select pen (🖊️) mode.")
+                    ui.item("e: Select eraser (🧽) mode.")
+                    ui.item("s: Select smudge (💨) mode.")
+                    ui.item("c: Select clip (📎) mode.")
+                    ui.item("z: Spin a new colour.")
+                    ui.item("u: Undo.")
+                    ui.item("?: Show this help menu.")
+                ui.markdown(
+                    """
+                    To add images to the canvas, upload one via the file upload, and then click where you want to add
+                    it on the canvas.
+                    """,
+                )
+                ui.markdown(
+                    """
+                    To add text to the canvas, type in the text input and click the `Add to canvas` button. You can
+                    set the text to be bolded or italicised. You can also select the font from the dropdown.
+                    """,
+                )
+                ui.markdown(
+                    """
+                    Clipped regions, images, and text can all be resized and rotated. They can be resized using the
+                    scroll wheel or similar. They can be rotated by holding `Alt` and then pressing the
+                    left or right arrow key.
+                    """,
+                )
+                ui.markdown(
+                    """
+                    You can switch between the smooth (✍️) or pixel (👾) modes using the toggle below.
+                    """,
+                )
+            ui.button(
+                "Close",
+                on_click=dialog.close,
+            )
+        dialog.open()
+
+    ui.add_head_html("""
+        <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+        <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+                    <style>
+            #loading { outline: none; border: none; background: transparent }
+        </style>
+        <script type="module">
+            const loading = document.getElementById('loading');
+            addEventListener('py:ready', () => loading.close());
+            loading.showModal();
+        </script>
+    """)
+
+    ui.add_body_html("""
+        <dialog id="loading">
+                <h1>Loading...</h1>
+        </dialog>
+    """)
+
     ui.element("img").props("id='file-upload'").style("display: none;")
 
     with ui.row().style("display: flex; width: 100%;"):
         # Page controls
         with ui.column().style("flex-grow: 1; flex-basis: 0;"):
-            dark = ui.dark_mode()
-            ui.switch("Dark mode").bind_value(dark)
+            with ui.row():
+                dark = ui.dark_mode()
+                ui.switch("Dark mode").bind_value(dark)
+                ui.button(icon="help", on_click=lambda: show_help_menu()).props(
+                    "class='keyboard-shortcuts' shortcut_data='btn,?'",
+                )
             ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
             ui.button("Download").props("id='download-button'")
             file_uploader = (
@@ -210,8 +263,8 @@ def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in
         # Canvas controls
         with ui.column().style("flex-grow: 1; flex-basis: 0;"):
             with ui.row():
-                ui.button("Undo").props("id='undo-button'").props("class='keyboard-shortcuts' shortcut_data='btn,u'")
-                ui.button("Redo").props("id='redo-button'").props("class='keyboard-shortcuts' shortcut_data='btn,r'")
+                ui.button("Undo").props("id='undo-button' class='keyboard-shortcuts' shortcut_data='btn,u'")
+                ui.button("Redo").props("id='redo-button' class='keyboard-shortcuts' shortcut_data='btn,r'")
 
             action_toggle = ui.toggle(
                 action_options,
@@ -329,6 +382,19 @@ def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in
         <script type="py" src="/scripts/editor.py"></script>
         <script type="py" src="/scripts/shortcuts.py"></script>
     """)
+
+    await client.connected()
+    drawing_mode = await ui.run_javascript("return localStorage.getItem('cj12-hhh-drawing-mode');")
+    if drawing_mode == "pixel":
+        revert_type()
+        width_input.disable()
+        width_slider.disable()
+        file_uploader.disable()
+        text_input.disable()
+        add_text_button.disable()
+        bold_checkbox.disable()
+        italics_checkbox.disable()
+        font_family.disable()
 
 
 if __name__ in {"__main__", "__mp_main__"}:
