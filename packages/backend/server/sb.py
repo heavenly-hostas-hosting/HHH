@@ -1,4 +1,4 @@
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
 from gotrue.constants import STORAGE_KEY
 from supabase import AsyncClient, AsyncClientOptions, create_async_client
 
@@ -7,6 +7,23 @@ from . import env
 ACCESS_TOKEN_COOKIE_KEY = "sb_access_token"  # noqa: S105
 REFRESH_TOKEN_COOKIE_KEY = "sb_refresh_token"  # noqa: S105
 CODE_VERIFIER_COOKIE_KEY = "sb_code_verifier"
+
+
+def set_response_token_cookies_(response: Response, access_token: str, refresh_token: str) -> None:
+    response.set_cookie(
+        key=ACCESS_TOKEN_COOKIE_KEY,
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+    )
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE_KEY,
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+    )
 
 
 async def create_internal_client() -> AsyncClient:
@@ -18,10 +35,10 @@ async def create_internal_client() -> AsyncClient:
     )
 
 
-async def create_external_client() -> AsyncClient:
+async def create_public_client() -> AsyncClient:
     """Create a Supabase client."""
     return await create_async_client(
-        supabase_url=env.SUPABASE_EXTERNAL_URL,
+        supabase_url=env.SUPABASE_PUBLIC_URL,
         supabase_key=env.SUPABASE_KEY,
         options=AsyncClientOptions(flow_type="pkce"),
     )

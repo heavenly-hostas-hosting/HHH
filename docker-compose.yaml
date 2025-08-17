@@ -1,15 +1,31 @@
 name: cj12
 
 services:
-  backend:
+  cj12-backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     image: cj12-backend
     container_name: cj12-backend
     ports:
-      - "9000:8060"
+      - "9000:9000"
+    # volumes:
+    #   - ./packages/backend:/app
+    #   - ./packages/backend/.env:/app/.env:ro
     env_file: ./packages/backend/.env
+    # networks:
+    #   - shared-net
+
+  cj12-editor:
+    image: zauberzeug/nicegui:latest
+    restart: always
+    ports:
+      - 9010:9010
+    environment:
+      - PUID=1000 # change this to your user id
+      - PGID=1000 # change this to your group id
+    volumes:
+      - ./packages/editor:/app
     # networks:
     #   - shared-net
 
@@ -107,7 +123,7 @@ services:
       GOTRUE_EXTERNAL_GITHUB_ENABLED: true
       GOTRUE_EXTERNAL_GITHUB_CLIENT_ID: ${CLIENT_ID}
       GOTRUE_EXTERNAL_GITHUB_SECRET: ${CLIENT_SECRET}
-      GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI: "http://localhost:8000/auth/v1/callback"
+      GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI: ${GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI}
 
   meta:
     container_name: supabase-meta

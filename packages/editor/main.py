@@ -4,6 +4,7 @@ import pathlib
 import random
 
 from nicegui import app, ui
+from nicegui.client import Client
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 SPIN_COUNT = 10
@@ -31,7 +32,7 @@ app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
 
 @ui.page("/")
-def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in this function for private viewing of the page
+async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below lines need to be in this function for private viewing of the page
     """Index page for the editor."""
 
     def do_reset(*, mode_value: bool) -> None:
@@ -241,7 +242,7 @@ def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in
                 dark = ui.dark_mode()
                 ui.switch("Dark mode").bind_value(dark)
                 ui.button(icon="help", on_click=lambda: show_help_menu()).props(
-                    "class='keyboard-shortcuts' shortcut_data='btn,?'"
+                    "class='keyboard-shortcuts' shortcut_data='btn,?'",
                 )
             ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
             ui.button("Download").props("id='download-button'")
@@ -337,6 +338,51 @@ def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in
                     ),
                 )
 
+            async def publish() -> None:
+                """Fetch the API and publish the canvas."""
+                ui.notify("Publishing...")
+                try:
+                    response_ok = await ui.run_javascript(
+                        """
+                        const format = "image/webp";
+                        const quality = 0.7;  // 70%
+
+                        const canvas = document.querySelector("#image-canvas");
+                        const blob = await new Promise((r) => canvas.toBlob(r, format, quality));
+
+                        if (blob === null) {
+                            return false;
+                        }
+
+                        // Use FormData so FastAPI can read it as UploadFile
+                        const form = new FormData();
+                        form.append("image", blob, "canvas.webp");
+
+                        response = await fetch(
+                            "http://cj12.matiiss.com/api/publish",
+                            {
+                                method: "POST",
+                                credentials: "include",
+                                body: form,
+                            },
+                        ).catch((e) => console.error(e));
+
+                        return response.ok;
+                        """,
+                        timeout=60,
+                    )
+
+                    if not response_ok:
+                        ui.notify("Failed to publish!", type="negative")
+                        return
+
+                    ui.notify("Artwork published successfully!", type="positive")
+
+                except Exception as e:  # noqa: BLE001
+                    ui.notify(f"An error occurred: {e}", type="negative")
+
+            ui.button("Publish", on_click=publish)
+
     ui.add_body_html("""
         <py-config>
             [[fetch]]
@@ -347,5 +393,19 @@ def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in
         <script type="py" src="/scripts/shortcuts.py"></script>
     """)
 
+    await client.connected()
+    drawing_mode = await ui.run_javascript("return localStorage.getItem('cj12-hhh-drawing-mode');")
+    if drawing_mode == "pixel":
+        revert_type()
+        width_input.disable()
+        width_slider.disable()
+        file_uploader.disable()
+        text_input.disable()
+        add_text_button.disable()
+        bold_checkbox.disable()
+        italics_checkbox.disable()
+        font_family.disable()
 
-ui.run()
+
+if __name__ in {"__main__", "__mp_main__"}:
+    ui.run(port=9010, title="HHH Editor")
