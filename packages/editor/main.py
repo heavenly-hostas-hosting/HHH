@@ -4,6 +4,7 @@ import pathlib
 import random
 
 from nicegui import app, ui
+from nicegui.client import Client
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 SPIN_COUNT = 10
@@ -21,7 +22,7 @@ app.add_static_files("/scripts", pathlib.Path(__file__).parent / "scripts")
 
 
 @ui.page("/")
-def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in this function for private viewing of the page
+async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below lines need to be in this function for private viewing of the page
     """Index page for the editor."""
 
     def do_reset(*, mode_value: bool) -> None:
@@ -324,7 +325,6 @@ def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in
                         text_input.set_value(""),
                     ),
                 )
-
     ui.add_body_html("""
         <py-config>
             [[fetch]]
@@ -334,6 +334,19 @@ def index() -> None:  # noqa: C901, PLR0915 All of the below lines need to be in
         <script type="py" src="/scripts/editor.py"></script>
         <script type="py" src="/scripts/shortcuts.py"></script>
     """)
+
+    await client.connected()
+    drawing_mode = await ui.run_javascript("return localStorage.getItem('cj12-hhh-drawing-mode');")
+    if drawing_mode == "pixel":
+        revert_type()
+        width_input.disable()
+        width_slider.disable()
+        file_uploader.disable()
+        text_input.disable()
+        add_text_button.disable()
+        bold_checkbox.disable()
+        italics_checkbox.disable()
+        font_family.disable()
 
 
 ui.run()

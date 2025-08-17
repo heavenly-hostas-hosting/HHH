@@ -12,6 +12,7 @@ from js import (  # pyright: ignore[reportMissingImports]
     Object,
     createImageBitmap,
     document,
+    localStorage,
     window,
 )
 from pyodide.ffi import create_proxy  # pyright: ignore[reportMissingImports]
@@ -112,6 +113,13 @@ def save_history() -> None:
 
     ctx.history.append(ctx.getImageData(0, 0, canvas.width, canvas.height))
     ctx.history_index += 1
+    save_change_to_browser()
+
+
+def save_change_to_browser() -> None:
+    """Save change to browser storage."""
+    localStorage.setItem("cj12-hhh-image-data", canvas.toDataURL("image/webp"))
+    localStorage.setItem("cj12-hhh-drawing-mode", ctx.type)
 
 
 @when("click", "#undo-button")
@@ -127,6 +135,8 @@ def undo(_: Event) -> None:
         ctx.globalCompositeOperation = "source-over"
         ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height)
         ctx.globalCompositeOperation = ctx.prev_operation
+        localStorage.setItem("cj12-hhh-image-data", canvas.toDataURL("image/webp"))
+        localStorage.setItem("cj12-hhh-drawing-mode", ctx.type)
 
     createImageBitmap(ctx.history[ctx.history_index]).then(place_history)
 
@@ -144,6 +154,8 @@ def redo(_: Event) -> None:
         ctx.globalCompositeOperation = "source-over"
         ctx.drawImage(img_bitmap, 0, 0, canvas.width, canvas.height)
         ctx.globalCompositeOperation = ctx.prev_operation
+        localStorage.setItem("cj12-hhh-image-data", canvas.toDataURL("image/webp"))
+        localStorage.setItem("cj12-hhh-drawing-mode", ctx.type)
 
     createImageBitmap(ctx.history[ctx.history_index]).then(place_history)
 
@@ -789,6 +801,7 @@ def reset_board(_: Event) -> None:
 
     """
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+    save_history()
 
 
 @when("click", "#download-button")
@@ -800,7 +813,7 @@ def download_image(_: Event) -> None:
 
     """
     link = document.createElement("a")
-    link.download = "download.avif"
+    link.download = "download.webp"
     link.href = canvas.toDataURL()
     link.click()
     link.remove()
@@ -978,6 +991,34 @@ def keyup_event(event: KeyboardEvent) -> None:
     """
     if event.key == "Alt":
         ctx.is_rotating = False
+
+
+@create_proxy
+def load_image(event: Event = None) -> None:
+    """Load image from the browser storage."""
+    data_url = localStorage.getItem("cj12-hhh-image-data")
+    drawing_mode = localStorage.getItem("cj12-hhh-drawing-mode")
+    if data_url:
+        if drawing_mode == "pixel":
+            ctx.type = "pixel"
+            ctx.imageSmoothingEnabled = False
+            ctx.scaled_by = 0.5
+        saved_canvas_data = Image.new()
+        saved_canvas_data.src = data_url
+        saved_canvas_data.addEventListener(
+            "load",
+            create_proxy(
+                lambda _: ctx.drawImage(saved_canvas_data, 0, 0, canvas.width, canvas.height),
+            ),
+        )
+        if drawing_mode == "pixel":
+            resize(event)
+
+
+if document.readyState == "loading":
+    window.addEventListener("DOMContentLoaded", load_image)
+else:
+    load_image()
 
 
 window.addEventListener("resize", resize)
