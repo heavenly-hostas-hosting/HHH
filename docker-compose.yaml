@@ -8,10 +8,10 @@ services:
     image: cj12-backend
     container_name: cj12-backend
     ports:
-      - "9000:8060"
-    volumes:
-      - ./packages/backend:/app
-      - ./packages/backend/.env:/app/.env:ro
+      - "9000:9000"
+    # volumes:
+    #   - ./packages/backend:/app
+    #   - ./packages/backend/.env:/app/.env:ro
     env_file: ./packages/backend/.env
     # networks:
     #   - shared-net
@@ -20,7 +20,7 @@ services:
     image: zauberzeug/nicegui:latest
     restart: always
     ports:
-      - 9080:8080
+      - 9010:9010
     environment:
       - PUID=1000 # change this to your user id
       - PGID=1000 # change this to your group id

@@ -9,10 +9,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-workspace --package=backend
 
-# ADD ./packages/backend /app  # we'll rely on mounts for now
+# we'll rely on mounts for now
+# ...
+# err, nvm
+ADD ./packages/backend /app
 
 # RUN --mount=type=cache,target=/root/.cache/uv \
 #     uv sync --frozen
 
 # Run with uvicorn
-CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8060"]
+CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "9000"]
