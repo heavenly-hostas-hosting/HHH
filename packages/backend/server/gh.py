@@ -85,7 +85,7 @@ async def commit_and_create_pull_request(
     file_path: str,
     file_content: bytes,
     pr_title: str,
-) -> Any:
+) -> str:
     root_auth_headers = {"Authorization": f"token {root_app_installation_token}"}
     auth_headers = {"Authorization": f"token {app_installation_token}"}
     meta_headers = {"Accept": "application/vnd.github+json"}
@@ -121,7 +121,7 @@ async def commit_and_create_pull_request(
             },
         )
         r.raise_for_status()
-        # commit_hash = r.json()["commit"]["sha"]
+        commit_hash: str = r.json()["commit"]["sha"]
 
         # Open PR against upstream
         r = await client.post(
@@ -136,3 +136,5 @@ async def commit_and_create_pull_request(
             },
         )
         r.raise_for_status()
+
+    return commit_hash
