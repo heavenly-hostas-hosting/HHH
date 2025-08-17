@@ -35,10 +35,10 @@ async def create_internal_client() -> AsyncClient:
     )
 
 
-async def create_external_client() -> AsyncClient:
+async def create_public_client() -> AsyncClient:
     """Create a Supabase client."""
     return await create_async_client(
-        supabase_url=env.SUPABASE_EXTERNAL_URL,
+        supabase_url=env.SUPABASE_PUBLIC_URL,
         supabase_key=env.SUPABASE_KEY,
         options=AsyncClientOptions(flow_type="pkce"),
     )
