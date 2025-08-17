@@ -173,7 +173,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                     ui.item("c: Select clip (📎) mode.")
                     ui.item("z: Spin a new colour.")
                     ui.item("u: Undo.")
-                    ui.item("r: Redo.")
+                    ui.item("?: Show this help menu.")
                 ui.markdown(
                     """
                     To add images to the canvas, upload one via the file upload, and then click where you want to add
@@ -231,7 +231,9 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             with ui.row():
                 dark = ui.dark_mode()
                 ui.switch("Dark mode").bind_value(dark)
-                ui.button(icon="help", on_click=lambda: show_help_menu())
+                ui.button(icon="help", on_click=lambda: show_help_menu()).props(
+                    "class='keyboard-shortcuts' shortcut_data='btn,?'"
+                )
             ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
             ui.button("Download").props("id='download-button'")
             file_uploader = (
@@ -261,8 +263,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         # Canvas controls
         with ui.column().style("flex-grow: 1; flex-basis: 0;"):
             with ui.row():
-                ui.button("Undo").props("id='undo-button'").props("class='keyboard-shortcuts' shortcut_data='btn,u'")
-                ui.button("Redo").props("id='redo-button'").props("class='keyboard-shortcuts' shortcut_data='btn,r'")
+                ui.button("Undo").props("id='undo-button' class='keyboard-shortcuts' shortcut_data='btn,u'")
+                ui.button("Redo").props("id='redo-button' class='keyboard-shortcuts' shortcut_data='btn,r'")
 
             action_toggle = ui.toggle(
                 action_options,
