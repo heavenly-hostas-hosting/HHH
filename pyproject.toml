@@ -1,6 +1,6 @@
 [project]
-name = "insert-catchy-name-here"
-description = "A little app"
+name = "heavenly-hostas-hosting"
+description = "A little app for the Python Discord Code Jam 12 from the Heavenly Hostas team."
 authors = [
     { name = "Matiiss", email = "matiiss@matiiss.com" },
     { name = "PiLogic" },
@@ -28,33 +28,35 @@ fix = true
 src = ["src"] # TODO: fix
 
 [tool.ruff.lint]
-select = ["ALL"]
+select = ["E", "F", "I", "C901"]
+
+# select = ["ALL"]
 # Ignore some of the most obnoxious linting errors.
-ignore = [
-    # Missing docstrings.
-    "D100",
-    "D104",
-    "D105",
-    "D106",
-    "D107",
-    # Docstring whitespace.
-    "D203",
-    "D213",
-    # Docstring punctuation.
-    "D415",
-    # Docstring quotes.
-    "D301",
-    # Builtins.
-    "A",
-    # Print statements.
-    "T20",
-    # TODOs.
-    "TD002",
-    "TD003",
-    "FIX",
-    # Namespace packages.
-    "INP001",
-]
+# ignore = [
+#     # Missing docstrings.
+#     "D100",
+#     "D104",
+#     "D105",
+#     "D106",
+#     "D107",
+#     # Docstring whitespace.
+#     "D203",
+#     "D213",
+#     # Docstring punctuation.
+#     "D415",
+#     # Docstring quotes.
+#     "D301",
+#     # Builtins.
+#     "A",
+#     # Print statements.
+#     "T20",
+#     # TODOs.
+#     "TD002",
+#     "TD003",
+#     "FIX",
+#     # Namespace packages.
+#     "INP001",
+# ]
 
 [tool.uv.workspace]
 members = ["packages/backend", "packages/editor", "packages/gallery"]
