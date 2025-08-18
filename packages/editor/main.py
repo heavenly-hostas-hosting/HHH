@@ -276,23 +276,13 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 const form = new FormData();
                 form.append("image", blob, "canvas.webp");
 
-                if (window.top === window.self) {
-                    // not inside an iframe
-                    response = await fetch(
-                        `${apiUrl}/publish`,
-                        {
-                            method: "POST",
-                            credentials: "include",
-                            body: form,
-                        },
-                    ).catch((e) => console.error(e));
-
-                } else {
-                    // inside an iframe
-                    response = await requestFromParent(
-                        "POST", "/publish", form
-                    );
-                }
+                response = await fetch(
+                    `${apiUrl}/publish`,
+                    {
+                        method: "POST",
+                        body: form,
+                    },
+                ).catch((e) => console.error(e));
 
                 return response.ok;
                 """,
@@ -316,12 +306,21 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 """
                 const redirectUrl = `${apiUrl}/login`;
 
+                if (initialRefreshToken) {
+                    await fetch(
+                        `${redirectUrl}?refresh_token=${initialRefreshToken}`,
+                        {
+                            method: "POST",
+                        },
+                    ).catch((e) => console.error(e));
+                }
+
                 if (window.top === window.self) {
                     // not inside an iframe
                     window.location.href = redirectUrl;
                 } else {
                     // inside an iframe
-                    redirectFromParent(redirectUrl);
+                    redirectFromParent(`${redirectUrl}?include_refresh_token_in_fragment`);
                 }
 
                 sessionStorage.setItem("cj12-hhh-logged-in", "true");
@@ -348,6 +347,13 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 """
                 const redirectUrl = `${apiUrl}/logout`;
 
+                await fetch(
+                    `${redirectUrl}?here`,
+                    {
+                        method: "POST",
+                    },
+                ).catch((e) => console.error(e));
+
                 if (window.top === window.self) {
                     // not inside an iframe
                     window.location.href = redirectUrl;
@@ -369,33 +375,21 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             publish_button.move(hidden_buttons)
             logout_button.move(hidden_buttons)
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             ui.notify(f"An error occurred: {e}", type="negative")
 
     async def check_login_status() -> None:
         try:
             response = await ui.run_javascript(
                 """
+                response = await fetch(
+                    `${apiUrl}/status`,
+                    {
+                        method: "GET",
+                    },
+                ).catch((e) => console.error(e));
 
-                if (window.top === window.self) {
-                    // not inside an iframe
-                    response = await fetch(
-                        `${apiUrl}/status`,
-                        {
-                            method: "GET",
-                            credentials: "include",
-                        },
-                    ).catch((e) => console.error(e));
-
-                    response_json = response.json();
-                } else {
-                    // inside an iframe
-                    response = await requestFromParent(
-                        "GET", "/status", null
-                    ).catch((e) => console.error(e));
-
-                    response_json = response.body;
-                }
+                response_json = response.json();
 
                 sessionStorage.setItem("cj12-hhh-logged-in", response_json['logged_in']);
 
@@ -404,9 +398,9 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 timeout=60,
             )
 
-            if not response.ok:
-                ui.notify("Failed to check status!", type="negative")
-                return
+            # if not response.ok:
+            #     ui.notify("Failed to check status!", type="negative")
+            #     return
 
             if response["logged_in"]:
                 username.set_text(response["username"])
@@ -424,7 +418,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 logout_button.move(hidden_buttons)
                 ui.notify("You were logged out. Please login again.")
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             ui.notify(f"An error occurred: {e}", type="negative")
 
     ui.add_head_html("""
@@ -453,37 +447,16 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
             window.onload = () => {emitEvent('content_loaded');};
 
-            let nextMessageId = 0;
-            const pendingRequests = new Map();
             const parentOrigin = "https://heavenly-hostas-hosting.github.io";
             window.apiUrl = "https://cj12.matiiss.com/api";
 
-            window.requestFromParent = (method, endpoint, payload) => {
-                return new Promise((resolve, reject) => {
-                    const messageId = nextMessageId++;
-                    pendingRequests.set(messageId, resolve);
+            // Get the URL fragment (everything after the #)
+            const hash = window.location.hash.slice(1);  // remove the #
+            const params = new URLSearchParams(hash);
+            window.initialRefreshToken = params.get("refreshToken");
 
-                    const timer = setTimeout(() => {
-                        if (pendingRequests.has(messageId)) {
-                            pendingRequests.get(messageId).reject(new Error("Request timed out"));
-                            pendingRequests.delete(messageId);
-                        }
-                    }, timeoutS * 1000);
-
-                    pendingRequests.set(messageId, {
-                        resolve: (data) => { clearTimeout(timer); resolve(data); },
-                        reject: (err) => { clearTimeout(timer); reject(err); }
-                    });
-
-                    window.parent.postMessage({
-                        type: "REQUEST",
-                        method,
-                        messageId,
-                        endpoint,
-                        payload
-                    }, parentOrigin);
-                });
-            }
+            // Clear fragment
+            history.replaceState(null, "", window.location.pathname);
 
             window.redirectFromParent = (url) => {
                 window.parent.postMessage({
@@ -491,25 +464,6 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                     url,
                 }, parentOrigin);
             }
-
-            window.addEventListener("message", (event) => {
-                if (event.origin !== parentOrigin) {
-                    return;
-                }
-
-                const data = event.data;
-                if (data.type === "RESPONSE" && pendingRequests.has(data.messageId)) {
-                    const { resolve, reject } = pendingRequests.get(data.messageId);
-
-                    if (!data.response.ok) {
-                        reject(new Error(`Request failed with status ${data.response.status}`));
-                    } else {
-                        resolve(data.response);
-                    }
-
-                    pendingRequests.delete(data.messageId);
-                }
-            });
         </script>
     """)
 
