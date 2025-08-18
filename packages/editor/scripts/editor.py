@@ -80,9 +80,7 @@ ctx.prev_operation = "source-over"
 ctx.text_settings = {"bold": False, "italics": False, "size": 50, "font-family": "Arial"}
 ctx.clipping = False
 ctx.moving_clip = False
-
 ctx.drawing_shape = False
-
 ctx.start_coords = [0, 0]
 ctx.prev_stroke_style = "black"
 ctx.prev_line_width = 5
@@ -191,17 +189,20 @@ def show_action_icon(x: float, y: float) -> bool:
     def draw_clip(img_bitmap: ImageBitmap) -> None:
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+        # Canvas matrix to cursor coords first
         buffer_ctx.translate(
             x,
             y,
         )
-        buffer_ctx.rotate(ctx.rotation)
+        buffer_ctx.rotate(ctx.rotation)  # Apply rotation
+
+        # Ratio for scaling up/down
         ratio = img_bitmap.width / img_bitmap.height
 
         if img_bitmap.width < img_bitmap.height:
             buffer_ctx.strokeRect(
-                -(img_bitmap.width + ctx.size_change) / 2,
-                -(img_bitmap.height + ctx.size_change * ratio) / 2,
+                -(img_bitmap.width + ctx.size_change) / 2,  # Shift the horizontal centre to be on the cursor
+                -(img_bitmap.height + ctx.size_change * ratio) / 2,  # Shift the verical centre to be on the cursor
                 img_bitmap.width + ctx.size_change,
                 img_bitmap.height + ctx.size_change * ratio,
             )
@@ -226,7 +227,10 @@ def show_action_icon(x: float, y: float) -> bool:
                 img_bitmap.width + ctx.size_change * ratio,
                 img_bitmap.height + ctx.size_change,
             )
-        buffer_ctx.rotate(-ctx.rotation)
+
+        buffer_ctx.rotate(-ctx.rotation)  # Undo rotation
+
+        # Move canvas matrix back to top left corner
         buffer_ctx.translate(
             -x,
             -y,
@@ -235,14 +239,18 @@ def show_action_icon(x: float, y: float) -> bool:
     if ctx.moving_clip:
         createImageBitmap(ctx.prev_data).then(draw_clip)
         return True
+
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
     if ctx.moving_image:
         buffer_ctx.translate(
             x,
             y,
         )
         buffer_ctx.rotate(ctx.rotation)
+
         ratio = ctx.current_img.width / ctx.current_img.height
+
         if ctx.current_img.width < ctx.current_img.height:
             buffer_ctx.drawImage(
                 ctx.current_img,
@@ -265,6 +273,7 @@ def show_action_icon(x: float, y: float) -> bool:
             -x,
             -y,
         )
+
         return True
     if ctx.writing_text and not ctx.text_placed:
         buffer_ctx.translate(
@@ -272,17 +281,20 @@ def show_action_icon(x: float, y: float) -> bool:
             y,
         )
         buffer_ctx.rotate(ctx.rotation)
+
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
             -text_dimensions.width / 2,
             (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
         )
+
         buffer_ctx.rotate(-ctx.rotation)
         buffer_ctx.translate(
             -x,
             -y,
         )
+
         return True
     if ctx.clipping:
         buffer_ctx.strokeRect(
@@ -292,6 +304,7 @@ def show_action_icon(x: float, y: float) -> bool:
             y - ctx.start_coords[1],
         )
         return True
+
     regular_icon_show(x, y)
     return False
 
@@ -311,11 +324,13 @@ def regular_icon_show(x: float, y: float) -> None:
         elif ctx.action == "eraser":
             prev_width = buffer_ctx.lineWidth
             prev_fill = buffer_ctx.fillStyle
+
             buffer_ctx.lineWidth = ctx.scaled_by
             buffer_ctx.fillStyle = "white"
             buffer_ctx.fill()
             buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)
             buffer_ctx.stroke()
+
             buffer_ctx.lineWidth = prev_width
             buffer_ctx.fillStyle = prev_fill
 
@@ -624,6 +639,7 @@ def drop_media(event: MouseEvent) -> None:
     if ctx.clipping:
         ctx.clipping = False
         ctx.moving_clip = True
+
         ctx.prev_data = ctx.getImageData(
             ctx.start_coords[0],
             ctx.start_coords[1],
@@ -704,13 +720,16 @@ def canvas_click(event: MouseEvent) -> None:
         if ctx.action == "clip" and not ctx.moving_clip:
             ctx.clipping = True
             ctx.start_coords = [x, y]
+
             ctx.setLineDash([2, 10])
             buffer_ctx.setLineDash([2, 10])
+
             ctx.prev_stroke_style = ctx.strokeStyle
             ctx.prev_line_width = ctx.lineWidth
 
             ctx.strokeStyle = "black"
             ctx.lineWidth = 5
+
             buffer_ctx.strokeStyle = "black"
             buffer_ctx.lineWidth = 5
 
@@ -746,12 +765,15 @@ def special_actions(x: float, y: float) -> bool:
         return True
     if ctx.writing_text:
         ctx.text_placed = True
+
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
         ctx.translate(
             x,
             y,
         )
         ctx.rotate(ctx.rotation)
+
         text_dimensions = ctx.measureText(ctx.text_value)
 
         ctx.fillText(
@@ -775,11 +797,13 @@ def special_actions(x: float, y: float) -> bool:
 
         def draw_clip(img_bitmap: ImageBitmap) -> None:
             buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
             ctx.translate(
                 x,
                 y,
             )
             ctx.rotate(ctx.rotation)
+
             ratio = img_bitmap.width / img_bitmap.height
 
             if img_bitmap.width < img_bitmap.height:
@@ -809,8 +833,10 @@ def special_actions(x: float, y: float) -> bool:
             ctx.rotation = 0
 
         createImageBitmap(ctx.prev_data).then(draw_clip)
+
         ctx.setLineDash([])
         buffer_ctx.setLineDash([])
+
         ctx.strokeStyle = ctx.prev_stroke_style
         ctx.lineWidth = ctx.prev_line_width
 
@@ -829,13 +855,17 @@ def draw_image(x: float, y: float) -> None:
         y (float): Y coordinate
     """
     ctx.moving_image = False
+
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
     ctx.translate(
         x,
         y,
     )
     ctx.rotate(ctx.rotation)
+
     ratio = ctx.current_img.width / ctx.current_img.height
+
     if ctx.current_img.width < ctx.current_img.height:
         ctx.drawImage(
             ctx.current_img,
@@ -852,13 +882,15 @@ def draw_image(x: float, y: float) -> None:
             ctx.current_img.width + ctx.size_change * ratio,
             ctx.current_img.height + ctx.size_change,
         )
-    ctx.globalCompositeOperation = ctx.prev_operation
-    ctx.size_change = 0
+
     ctx.rotate(-ctx.rotation)
     ctx.translate(
         -x,
         -y,
     )
+
+    ctx.globalCompositeOperation = ctx.prev_operation
+    ctx.size_change = 0
     ctx.rotation = 0
     save_history()
 
@@ -872,6 +904,7 @@ def colour_change(_: Event) -> None:
     """
     ctx.strokeStyle = window.pen.colour
     ctx.fillStyle = window.pen.colour
+
     buffer_ctx.strokeStyle = window.pen.colour
     buffer_ctx.fillStyle = window.pen.colour
 
@@ -896,14 +929,10 @@ def action_change(event: Event) -> None:
     """
     ctx.action = event.target.getAttribute("value")
     match ctx.action:
-        case "pen":
+        case "pen" | "smudge" | "clip":
             ctx.globalCompositeOperation = "source-over"
         case "eraser":
             ctx.globalCompositeOperation = "destination-out"
-        case "smudge":
-            ctx.globalCompositeOperation = "source-over"
-        case "clip":
-            ctx.globalCompositeOperation = "source-over"
 
 
 @when("addText", "#text-input")
@@ -917,10 +946,13 @@ def add_text(_: Event) -> None:
     if ctx.text_value:
         ctx.writing_text = True
         ctx.text_placed = False
+
         ctx.prev_operation = ctx.globalCompositeOperation
         ctx.globalCompositeOperation = "source-over"
+
         ctx.text_settings["bold"] = "bold" if bold_input.getAttribute("aria-checked") == "true" else "normal"
         ctx.text_settings["italics"] = "italic" if italics_input.getAttribute("aria-checked") == "true" else "normal"
+
         ctx.text_settings["font-family"] = font_family_input.value
         # I know it's too long but it doesn't work otherwise
         ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
@@ -1001,12 +1033,13 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
                             but I can't type hint with it.
     """
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
     font = ctx.font
     global_composite_operation = ctx.globalCompositeOperation
-    display_height = window.innerHeight * 0.95
 
+    display_height = window.innerHeight * 0.95
     display_width = display_height * (2**0.5)
 
     canvas.style.height = f"{display_height}px"
@@ -1110,19 +1143,22 @@ def keydown_event(event: KeyboardEvent) -> None:
     if event.key == "Backspace":
         if ctx.moving_image:
             ctx.moving_image = False
+
             ctx.globalCompositeOperation = ctx.prev_operation
             ctx.size_change = 0
         elif ctx.moving_clip:
             ctx.moving_clip = False
+
             ctx.setLineDash([])
-            buffer_ctx.setLineDash([])
             ctx.strokeStyle = ctx.prev_stroke_style
             ctx.lineWidth = ctx.prev_line_width
 
+            buffer_ctx.setLineDash([])
             buffer_ctx.strokeStyle = ctx.prev_stroke_style
             buffer_ctx.lineWidth = ctx.prev_line_width
         elif ctx.writing_text:
             ctx.writing_text = False
+
             ctx.text_placed = True
             ctx.globalCompositeOperation = ctx.prev_operation
         show_action_icon(ctx.current_position[0], ctx.current_position[1])
@@ -1152,11 +1188,13 @@ def load_image(event: Event = None) -> None:
     """Load image from the browser storage."""
     data_url = localStorage.getItem("cj12-hhh-image-data")
     drawing_mode = localStorage.getItem("cj12-hhh-drawing-mode")
+
     if data_url:
         if drawing_mode == "pixel":
             ctx.type = "pixel"
             ctx.imageSmoothingEnabled = False
             ctx.scaled_by = 0.5
+
         saved_canvas_data = Image.new()
         saved_canvas_data.src = data_url
         saved_canvas_data.addEventListener(
@@ -1165,12 +1203,14 @@ def load_image(event: Event = None) -> None:
                 lambda _: ctx.drawImage(saved_canvas_data, 0, 0, canvas.width, canvas.height),
             ),
         )
+
         if drawing_mode == "pixel":
             resize(event)
-    else:
-        save_history()  # Save the blank canvas
+
+    save_history()  # Save the starting image
 
 
+# Load image from storage
 if document.readyState == "loading":
     window.addEventListener("DOMContentLoaded", load_image)
 else:

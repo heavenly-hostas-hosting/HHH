@@ -69,7 +69,6 @@ def handle_keydown(event: KeyboardEvent) -> None:
         undo_button.click()
     elif holding_keys["control"] and event.key == "Z":
         redo_button.click()
-    print(event.key)
     if event.repeat:  # runs only once when same key is pressed more than once or held down
         return
     action = shortcuts_dict.get(event.key, None)
