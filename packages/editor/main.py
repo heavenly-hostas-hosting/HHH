@@ -277,7 +277,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 form.append("image", blob, "canvas.webp");
 
                 response = await fetch(
-                    `${apiUrl}/publish`,
+                    "/api/publish",
                     {
                         method: "POST",
                         body: form,
@@ -304,24 +304,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         try:
             await ui.run_javascript(
                 """
-                const redirectUrl = `${apiUrl}/login`;
-
-                if (initialRefreshToken) {
-                    await fetch(
-                        `${redirectUrl}?refresh_token=${initialRefreshToken}`,
-                        {
-                            method: "POST",
-                        },
-                    ).catch((e) => console.error(e));
-                }
-
-                if (window.top === window.self) {
-                    // not inside an iframe
-                    window.location.href = redirectUrl;
-                } else {
-                    // inside an iframe
-                    redirectFromParent(`${redirectUrl}?include_refresh_token_in_fragment`);
-                }
+                const redirectUrl = "/api/login";
+                window.location.href = redirectUrl;
 
                 sessionStorage.setItem("cj12-hhh-logged-in", "true");
                 """,
@@ -336,7 +320,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             publish_button.move(shown_buttons)
             logout_button.move(shown_buttons)
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             ui.notify(f"An error occurred: {e}", type="negative")
 
     async def logout() -> None:
@@ -345,22 +329,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         try:
             await ui.run_javascript(
                 """
-                const redirectUrl = `${apiUrl}/logout`;
-
-                await fetch(
-                    `${redirectUrl}?here`,
-                    {
-                        method: "POST",
-                    },
-                ).catch((e) => console.error(e));
-
-                if (window.top === window.self) {
-                    // not inside an iframe
-                    window.location.href = redirectUrl;
-                } else {
-                    // inside an iframe
-                    redirectFromParent(redirectUrl);
-                }
+                const redirectUrl = "/api/logout";
+                window.location.href = redirectUrl;
 
                 sessionStorage.setItem("cj12-hhh-logged-in", "false");
                 """,
@@ -383,10 +353,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             response = await ui.run_javascript(
                 """
                 response = await fetch(
-                    `${apiUrl}/status`,
-                    {
-                        method: "GET",
-                    },
+                    "/api/status",
+                    { method: "GET" },
                 ).catch((e) => console.error(e));
 
                 response_json = response.json();
@@ -446,24 +414,6 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             loading.showModal();
 
             window.onload = () => {emitEvent('content_loaded');};
-
-            const parentOrigin = "https://heavenly-hostas-hosting.github.io";
-            window.apiUrl = "https://cj12.matiiss.com/api";
-
-            // Get the URL fragment (everything after the #)
-            const hash = window.location.hash.slice(1);  // remove the #
-            const params = new URLSearchParams(hash);
-            window.initialRefreshToken = params.get("refreshToken");
-
-            // Clear fragment
-            history.replaceState(null, "", window.location.pathname);
-
-            window.redirectFromParent = (url) => {
-                window.parent.postMessage({
-                    type: "REDIRECT",
-                    url,
-                }, parentOrigin);
-            }
         </script>
     """)
 

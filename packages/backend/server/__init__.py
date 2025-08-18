@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from gotrue import CodeExchangeParams, SignInWithOAuthCredentials, SignInWithOAuthCredentialsOptions
 from pydantic import BaseModel
@@ -12,39 +11,10 @@ from . import env, gh, pg, sb
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=env.CORS_ALLOW_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 @app.post("/login")
-async def login(
-    refresh_token: Annotated[str | None, Query()] = None,
-    include_refresh_token_in_fragment: Annotated[bool, Query()] = False,
-) -> Response:
+async def login() -> Response:
     sb_client = await sb.create_public_client()
-
-    if refresh_token is not None:
-        if include_refresh_token_in_fragment:
-            raise HTTPException(
-                status_code=422, detail="Cannot specify both refresh_token and include_refresh_token_in_fragment"
-            )
-
-        auth_response = await sb_client.auth.refresh_session(refresh_token)
-        if auth_response.session is None:
-            raise HTTPException(status_code=401, detail="User not authenticated")
-
-        response = Response(status_code=200)
-        sb.set_response_token_cookies_(
-            response,
-            access_token=auth_response.session.access_token,
-            refresh_token=auth_response.session.refresh_token,
-        )
-        return response
 
     gh_response = await sb_client.auth.sign_in_with_oauth(
         SignInWithOAuthCredentials(
@@ -61,44 +31,28 @@ async def login(
         secure=True,
         samesite="lax",
     )
-    if include_refresh_token_in_fragment:
-        response.set_cookie(
-            key=sb.INCLUDE_REFRESH_TOKEN_IN_FRAGMENT_COOKIE_KEY,
-            value="true",
-            httponly=True,
-            secure=True,
-            samesite="lax",
-        )
 
     return response
 
 
 @app.post("/logout")
-async def logout(request: Request, here: Annotated[bool, Query()] = False) -> Response:
-    def delete_cookies_(res: Response) -> None:
-        res.delete_cookie(
-            key=sb.ACCESS_TOKEN_COOKIE_KEY,
-            httponly=True,
-            secure=True,
-            samesite="lax",
-        )
-        res.delete_cookie(
-            key=sb.REFRESH_TOKEN_COOKIE_KEY,
-            httponly=True,
-            secure=True,
-            samesite="lax",
-        )
-
-    if here:
-        response = Response()
-        delete_cookies_(response)
-        return response
-
+async def logout(request: Request) -> Response:
     sb_client = await sb.get_session(request)
     await sb_client.auth.sign_out()
 
     response = RedirectResponse(env.POST_AUTH_REDIRECT_URI)
-    delete_cookies_(response)
+    response.delete_cookie(
+        key=sb.ACCESS_TOKEN_COOKIE_KEY,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+    response.delete_cookie(
+        key=sb.REFRESH_TOKEN_COOKIE_KEY,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
 
     return response
 
@@ -124,27 +78,13 @@ async def auth(
     if gh_response.session is None:
         raise HTTPException(status_code=401, detail="Failed to exchange code for session")
 
-    include_refresh_token = request.cookies.get(sb.INCLUDE_REFRESH_TOKEN_IN_FRAGMENT_COOKIE_KEY) == "true"
-
-    redirect_url = env.POST_AUTH_REDIRECT_URI
-    if include_refresh_token:
-        redirect_url += f"#refreshToken={gh_response.session.refresh_token}"
-
-    response = RedirectResponse(redirect_url)
+    response = RedirectResponse(env.POST_AUTH_REDIRECT_URI)
     response.delete_cookie(
         key=sb.CODE_VERIFIER_COOKIE_KEY,
         httponly=True,
         secure=True,
         samesite="lax",
     )
-    if include_refresh_token:
-        response.delete_cookie(
-            key=sb.INCLUDE_REFRESH_TOKEN_IN_FRAGMENT_COOKIE_KEY,
-            httponly=True,
-            secure=True,
-            samesite="lax",
-        )
-
     sb.set_response_token_cookies_(
         response,
         access_token=gh_response.session.access_token,

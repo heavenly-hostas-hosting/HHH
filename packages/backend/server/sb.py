@@ -9,7 +9,6 @@ from . import env
 ACCESS_TOKEN_COOKIE_KEY = "sb_access_token"  # noqa: S105
 REFRESH_TOKEN_COOKIE_KEY = "sb_refresh_token"  # noqa: S105
 CODE_VERIFIER_COOKIE_KEY = "sb_code_verifier"
-INCLUDE_REFRESH_TOKEN_IN_FRAGMENT_COOKIE_KEY = "sb_include_refresh_in_fragment"
 
 
 def set_response_token_cookies_(response: Response, access_token: str, refresh_token: str) -> None:
@@ -18,14 +17,14 @@ def set_response_token_cookies_(response: Response, access_token: str, refresh_t
         value=access_token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
     )
     response.set_cookie(
         key=REFRESH_TOKEN_COOKIE_KEY,
         value=refresh_token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
     )
 
 
