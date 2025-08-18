@@ -152,9 +152,9 @@ def get_painting_info(p: THREE.Mesh) -> tuple[V3, V3, V2]:
     return (position, normal, size_wh)
 
 
-def get_chunk_coords(room_apothem: float) -> tuple[int, int]:
-    x_coord = (CAMERA.position.x - room_apothem) // (room_apothem * 2)
-    z_coord = (CAMERA.position.z - room_apothem) // (room_apothem * 2)
+def get_player_chunk(room_apothem: float) -> tuple[int, int]:
+    x_coord = round((CAMERA.position.x) / (room_apothem * 2))
+    z_coord = round((CAMERA.position.z) / (room_apothem * 2))
 
     if x_coord < 0:
         x_coord = 0
@@ -448,19 +448,19 @@ def load_image(slot: int):
         console.error(e)
 
 
-async def load_images_from_listing() -> None:
+async def load_images_from_listing() -> int:
     if USE_LOCALHOST:
         r = await pyfetch("./assets/test-image-listing.json")
     else:
         r = await pyfetch("https://cj12.matiiss.com/api/artworks")
     data = await r.text()
-    for username, img in json.loads(data)["artworks"]:
+    n_existing_images = len(IMAGES_LIST)
+    for username, img in json.loads(data)["artworks"][n_existing_images:]:
         IMAGES_LIST.append(img)
 
-    print(f"Images to be loaded: {len(IMAGES_LIST)}")
+    n_added_images = len(IMAGES_LIST) - n_existing_images
 
-    # for idx, (username, img) in enumerate(json.loads(data)["artworks"]):
-    #    load_image(img, idx)
+    return n_added_images
 
 
 def create_room(
@@ -522,9 +522,8 @@ async def load_room(room: THREE.Group) -> None:
                 slot = int(p.name.split("_")[1])
                 if slot < len(IMAGES_LIST):
                     load_image(slot)
-                    print(f"loaded image {slot}")
 
-    print(f"{room.name} is now loaded")
+    # print(f"{room.name} is now loaded")
 
 
 async def unload_room(room: THREE.Group) -> None:
@@ -537,7 +536,11 @@ async def unload_room(room: THREE.Group) -> None:
     print(f"{room.name} is now unloaded")
 
 
-async def updated_loaded_rooms(current_room: THREE.Group, r: int = 2) -> None:
+async def updated_loaded_rooms(
+    current_room: THREE.Group,
+    force_reload: bool = False,
+    r: int = 2,
+) -> None:
     """Loads all rooms which are at some r distance from the current room"""
     print("Loading rooms...")
 
@@ -559,6 +562,8 @@ async def updated_loaded_rooms(current_room: THREE.Group, r: int = 2) -> None:
             if not calc(room):
                 await unload_room(room)
                 LOADED_ROOMS.remove(room)
+            elif force_reload:
+                await load_room(room)
         else:
             if calc(room):
                 await load_room(room)
@@ -675,6 +680,22 @@ async def load_gallery() -> None:
     await clone_rooms(layout_points, layout, apothem)
 
 
+async def image_query_loop():
+    apothem = get_room_apothem()
+    while True:
+        n_added_images = await load_images_from_listing()
+        if n_added_images:
+            chunk_x, chunk_z = get_player_chunk(apothem)
+            print(f"New images to be added: {n_added_images}")
+            await updated_loaded_rooms(
+                SCENE.getObjectByName(f"room_{chunk_x}_{chunk_z}"),
+                force_reload=True,
+                r=3,  # A slightly bigger radius, just in case
+            )
+
+        await asyncio.sleep(15)
+
+
 async def main():
     print("Loading image listing...")
     await load_images_from_listing()
@@ -686,6 +707,9 @@ async def main():
 
     print("Loading neighbors of first room...")
     asyncio.ensure_future(updated_loaded_rooms(SCENE.getObjectByName("room_0_0")))
+
+    print("Creating image query loop...")
+    asyncio.ensure_future(image_query_loop())
 
     clock = THREE.Clock.new()
     while True:
