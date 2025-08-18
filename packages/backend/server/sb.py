@@ -1,5 +1,7 @@
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
 from gotrue.constants import STORAGE_KEY
+from gotrue.errors import AuthSessionMissingError
+from gotrue.types import UserIdentity
 from supabase import AsyncClient, AsyncClientOptions, create_async_client
 
 from . import env
@@ -7,6 +9,23 @@ from . import env
 ACCESS_TOKEN_COOKIE_KEY = "sb_access_token"  # noqa: S105
 REFRESH_TOKEN_COOKIE_KEY = "sb_refresh_token"  # noqa: S105
 CODE_VERIFIER_COOKIE_KEY = "sb_code_verifier"
+
+
+def set_response_token_cookies_(response: Response, access_token: str, refresh_token: str) -> None:
+    response.set_cookie(
+        key=ACCESS_TOKEN_COOKIE_KEY,
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE_KEY,
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
 
 
 async def create_internal_client() -> AsyncClient:
@@ -18,10 +37,10 @@ async def create_internal_client() -> AsyncClient:
     )
 
 
-async def create_external_client() -> AsyncClient:
+async def create_public_client() -> AsyncClient:
     """Create a Supabase client."""
     return await create_async_client(
-        supabase_url=env.SUPABASE_EXTERNAL_URL,
+        supabase_url=env.SUPABASE_PUBLIC_URL,
         supabase_key=env.SUPABASE_KEY,
         options=AsyncClientOptions(flow_type="pkce"),
     )
@@ -50,3 +69,18 @@ async def get_session(request: Request) -> AsyncClient:
     await client.auth.set_session(access_token=access_token, refresh_token=refresh_token)
 
     return client
+
+
+async def get_github_identity(client: AsyncClient) -> UserIdentity:
+    user_identities = await client.auth.get_user_identities()
+    if isinstance(user_identities, AuthSessionMissingError):
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    for identity in user_identities.identities:
+        if identity.provider == "github":
+            gh_identity = identity
+            break
+    else:
+        raise HTTPException(status_code=401, detail="GitHub identity not found... how did you get here?")
+
+    return gh_identity

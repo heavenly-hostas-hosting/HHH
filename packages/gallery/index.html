@@ -29,7 +29,7 @@
             window.GLTFLoader = GLTFLoader;
             window.RGBELoader = RGBELoader;
             window.PointerLockControls = PointerLockControls;
-          
+
         </script>
         <!-- for splashscreen -->
         <link rel="stylesheet" href="assets/css/style.css">
@@ -41,6 +41,10 @@
             addEventListener('py:ready', () => help_menu.showModal());
 
             const instructions = document.getElementById('instructions')
+
+            addEventListener('py:ready', () => instructions.style.display='block');
+            const editor = document.getElementById('editor')
+            addEventListener('py:ready', () => editor.style.display='block');
 
             loading.showModal();
         </script>
@@ -70,9 +74,10 @@
         </dialog>
 
         <div id="instructions">Click here to look and move around!</div>
+        <div id="editor"><a href="assets/editor.html">Go to editor!</a></div>
+
         <script type="py" src="./main.py" config="./pyscript.toml"></script>
 
     </body>
 
 </html>
-

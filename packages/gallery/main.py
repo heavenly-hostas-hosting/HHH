@@ -7,31 +7,31 @@
 # -------------------------------------- IMPORTS --------------------------------------
 print("IMPORTS")
 
-from pyodide.ffi import to_js, create_proxy  # pyright: ignore[reportMissingImports]
-from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
-from pyscript import when, window, document  # pyright: ignore[reportMissingImports]
-from js import (  # pyright: ignore[reportMissingImports]
-    Math,
-    THREE,
-    Object,
-    GLTFLoader,
-    RGBELoader,
-    PointerLockControls,
-)
-
-
-from collections import defaultdict
-from enum import Enum
 import asyncio
 import json
 import warnings
+from collections import defaultdict
 
 # Typing
 from collections.abc import Callable
+from enum import Enum
 from typing import Any
 
+from js import (  # pyright: ignore[reportMissingImports]
+    THREE,
+    GLTFLoader,
+    Math,
+    Object,
+    PointerLockControls,
+    RGBELoader,
+    console,
+)
+
 # Local
-from map_loader import MAP, get_map_layout, ROOM_TYPES, get_gallery_room
+from map_loader import MAP, ROOM_TYPES, get_gallery_room, get_map_layout
+from pyodide.ffi import create_proxy, to_js  # pyright: ignore[reportMissingImports]
+from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
+from pyscript import document, when, window  # pyright: ignore[reportMissingImports]
 
 # -------------------------------------- GLOBAL VARIABLES --------------------------------------
 print("GLOBAL VARIABLES")
@@ -84,8 +84,7 @@ VELOCITY = THREE.Vector3.new()
 
 REPO_URL = (
     r"https://cdn.jsdelivr.net/gh/"
-    r"Matiiss/pydis-cj12-heavenly-hostas@dev/"
-    r"packages/gallery/assets/images/"
+    r"heavenly-hostas-hosting/HHH@data/"
 )
 
 # For Type Hinting
@@ -166,7 +165,6 @@ KEY_MAPPINGS: dict[INPUTS, set[str]] = {
     INPUTS.LEFT: {"KeyH", "KeyA", "ArrowLeft"},
     INPUTS.RIGHT: {"KeyL", "KeyD", "ArrowRight"},
     INPUTS.BACK: {"KeyJ", "KeyS", "ArrowDown"},
-    #
     INPUTS.UP: {"Space"},
     INPUTS.DOWN: {"ShiftLeft", "ShiftRight"},
     #
@@ -419,25 +417,29 @@ def load_image(slot: int):
         PICTURES.add(plane)
         LOADED_SLOTS.append(slot)
 
-    textureLoader.load(
-        REPO_URL + image_loc,
-        create_proxy(inner_loader),
-    )
+    try:
+        textureLoader.load(
+            REPO_URL + image_loc,
+            create_proxy(inner_loader),
+            None,
+            create_proxy(lambda _: None),
+        )
+    except Exception as e:
+        console.error(e)
 
 
 async def load_images_from_listing() -> None:
     # r = await pyfetch(REPO_URL + "../" + "test-image-listing.json")
-    r = await pyfetch("./assets/test-image-listing.json")
+    # r = await pyfetch("./assets/test-image-listing.json")
+    r = await pyfetch("https://cj12.matiiss.com/api/artworks")
     data = await r.text()
-
-    IMAGES_LIST.extend(json.loads(data))
-    # IMAGES_LIST.extend(["tree-test-image.avif"]*100)
-    # print(IMAGES_LIST)
+    for username, img in json.loads(data)["artworks"]:
+        IMAGES_LIST.append(img)
 
     print(f"Images to be loaded: {len(IMAGES_LIST)}")
 
-    # for idx, img in enumerate(images):
-    #     load_image(img, idx)
+    # for idx, (username, img) in enumerate(json.loads(data)["artworks"]):
+    #    load_image(img, idx)
 
 
 def create_room(
