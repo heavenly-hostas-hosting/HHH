@@ -20,12 +20,45 @@
     }
   </style>
   <script>
-    window.addEventListener("message", (event) => {
-        if (event.origin !== "https://cj12.matiiss.com") return;
+    const iframeOrigin = "https://cj12.matiiss.com";
+    const apiUrl = "https://cj12.matiiss.com/api";
 
-        if (event.data.action === "redirect") {
-            window.location.href = event.data.url;
+    window.addEventListener("message", async (event) => {
+      if (event.origin !== iframeOrigin) return;
+      const data = event.data;
+
+      if (data.type === "REQUEST") {
+        try {
+          const res = await fetch(`${apiUrl}${data.endpoint}`, {
+            method: data.method,
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data.payload),
+          });
+
+          const body = await res.json().catch(() => null);
+
+          event.source.postMessage(
+            {
+              type: "RESPONSE",
+              messageId: data.messageId,
+              response: { ok: res.ok, status: res.status, body }
+            },
+            event.origin
+          );
+        } catch (err) {
+          event.source.postMessage(
+            {
+              type: "RESPONSE",
+              messageId: data.messageId,
+              response: { ok: false, status: 0, body: { error: err.message } }
+            },
+            event.origin
+          );
         }
+      } else if (data.type === "REDIRECT") {
+        window.location.href = data.url;
+      }
     });
   </script>
 </head>
