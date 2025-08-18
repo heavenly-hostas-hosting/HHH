@@ -601,4 +601,4 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
 
 if __name__ in {"__main__", "__mp_main__"}:
-    ui.run(port=9010, title="HHH Editor")  # , root_path="/editor")
+    ui.run(port=9010, title="HHH Editor", root_path="/editor")
