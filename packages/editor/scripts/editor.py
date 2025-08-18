@@ -654,9 +654,8 @@ def drop_media(event: MouseEvent) -> None:
     if ctx.drawing_shape:
         ctx.drawing_shape = False
         ctx.drawing = False
-        ctx.drawImage(buffer, 0,0)
+        ctx.drawImage(buffer, 0, 0)
         save_history()
-
 
 
 @when("mouseenter", "#image-canvas")
@@ -679,7 +678,12 @@ def leaves_canvas(event: MouseEvent) -> None:
     Args:
         event (MouseEvent): The mouse event
     """
-    if not ctx.drawing or ctx.clipping or ctx.drawing_shape or ctx.action in ("circle", "rectangle", "triangle", "star", "python"):
+    if (
+        not ctx.drawing
+        or ctx.clipping
+        or ctx.drawing_shape
+        or ctx.action in ("circle", "rectangle", "triangle", "star", "python")
+    ):
         return
 
     if ctx.type == "smooth" and ctx.action != "smudge":  # "pen" or "eraser"
@@ -1191,7 +1195,6 @@ def load_image(event: Event = None) -> None:
         if drawing_mode == "pixel":
             resize(event)
     save_history()
-
 
 
 # Load image from storage

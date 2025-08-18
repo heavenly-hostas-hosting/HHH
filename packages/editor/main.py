@@ -488,6 +488,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 publish_button = ui.button("Publish", on_click=show_publish_confirmation)
                 logout_button = ui.button("Logout", on_click=logout)
 
+            ui.link("Visit the gallery", "https://heavenly-hostas-hosting.github.io/HHH/")
+
         with ui.element("div").style("position: relative;"):
             ui.element("canvas").props("id='image-canvas'").style(
                 "border: 1px solid black; background-color: white;",
@@ -532,7 +534,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             width_slider = ui.slider(
                 min=1,
                 max=100,
-                value=1,
+                value=5,
                 on_change=lambda _: ui.run_javascript("""
                     const event = new Event('change');
                     document.querySelector(".width-input").dispatchEvent(event);
