@@ -1,7 +1,7 @@
-from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
-
 from enum import Enum
 from math import pi
+
+from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
 
 __all__ = [
     "NODE",
