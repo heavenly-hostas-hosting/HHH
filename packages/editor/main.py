@@ -312,15 +312,15 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         """Fetch the API and login."""
         ui.notify("Logging in...")
         try:
-            # await ui.run_javascript(
-            #     """
-            #     const redirectUrl = "/api/login";
-            #     window.location.href = redirectUrl;
+            await ui.run_javascript(
+                """
+                const redirectUrl = "/api/login";
+                window.location.href = redirectUrl;
 
-            #     sessionStorage.setItem("cj12-hhh-logged-in", "true");
-            #     """,
-            #     timeout=60,
-            # )
+                sessionStorage.setItem("cj12-hhh-logged-in", "true");
+                """,
+                timeout=60,
+            )
 
             ui.notify("Logged in successfully!", type="positive")
 
@@ -337,15 +337,15 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         """Fetch the API and logout."""
         ui.notify("Logging out...")
         try:
-            # await ui.run_javascript(
-            #     """
-            #     const redirectUrl = "/api/logout";
-            #     window.location.href = redirectUrl;
+            await ui.run_javascript(
+                """
+                const redirectUrl = "/api/logout";
+                window.location.href = redirectUrl;
 
-            #     sessionStorage.setItem("cj12-hhh-logged-in", "false");
-            #     """,
-            #     timeout=60,
-            # )
+                sessionStorage.setItem("cj12-hhh-logged-in", "false");
+                """,
+                timeout=60,
+            )
 
             ui.notify("Logged out successfully!", type="positive")
 
@@ -360,21 +360,21 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
     async def check_login_status() -> None:
         try:
-            response = {"logged_in": True, "username": "me"}  # = await ui.run_javascript(
-            #     """
-            #     response = await fetch(
-            #         "/api/status",
-            #         { method: "GET" },
-            #     ).catch((e) => console.error(e));
+            response = await ui.run_javascript(
+                """
+                response = await fetch(
+                    "/api/status",
+                    { method: "GET" },
+                ).catch((e) => console.error(e));
 
-            #     response_json = response.json();
+                response_json = response.json();
 
-            #     sessionStorage.setItem("cj12-hhh-logged-in", response_json['logged_in']);
+                sessionStorage.setItem("cj12-hhh-logged-in", response_json['logged_in']);
 
-            #     return response_json;
-            #     """,
-            #     timeout=60,
-            # )
+                return response_json;
+                """,
+                timeout=60,
+            )
 
             # if not response.ok:
             #     ui.notify("Failed to check status!", type="negative")
@@ -496,8 +496,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         # Canvas controls
         with ui.column().style("flex-grow: 1; flex-basis: 0;"):
             with ui.row():
-                ui.button("Undo").props("id='undo-button' class='keyboard-shortcuts' shortcut_data='btn,u'")
-                ui.button("Redo").props("id='redo-button' class='keyboard-shortcuts' shortcut_data='btn,r'")
+                ui.button("Undo").props("id='undo-button' class='keyboard-shortcuts'")
+                ui.button("Redo").props("id='redo-button' class='keyboard-shortcuts'")
 
             action_toggle = (
                 ui.toggle(
@@ -518,7 +518,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                         ui.label(colour)
                         colour_label = ui.label("00")
                         colour_values.append(colour_label)
-            ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,z'")
+            ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,space'")
             ui.separator().classes("w-full")
             width_input = ui.number(label="Line Width", min=1, max=100, step=1)
             width_slider = ui.slider(
@@ -601,4 +601,4 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
 
 if __name__ in {"__main__", "__mp_main__"}:
-    ui.run(port=9010, title="HHH Editor", root_path="/editor")
+    ui.run(port=9010, title="HHH Editor")  # , root_path="/editor")
