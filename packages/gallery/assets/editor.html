@@ -1,38 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>HHH Editor</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden; /* removes scrollbars */
-    }
-    iframe {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      border: none;
-    }
-  </style>
-  <script>
-    const iframeOrigin = "https://cj12.matiiss.com";
+<!-- Borrowed from https://stackoverflow.com/a/5411601/14531062 -->
 
-    window.addEventListener("message", async (event) => {
-      if (event.origin !== iframeOrigin) return;
-      const data = event.data;
-
-      if (data.type === "REDIRECT") {
-        window.location.href = data.url;
-      }
-    });
-  </script>
-</head>
-<body>
-  <iframe src="https://cj12.matiiss.com/editor"></iframe>
-</body>
+<!DOCTYPE HTML>
+<html lang="en-US">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="refresh" content="0; url=https://cj12.matiiss.com/editor">
+        <script type="text/javascript">
+            window.location.href = "https://cj12.matiiss.com/editor"
+        </script>
+        <title>Page Redirection</title>
+    </head>
+    <body>
+        <!-- Note: don't tell people to `click` the link, just tell them that it is a link. -->
+        If you are not redirected automatically, follow this <a href='https://cj12.matiiss.com/editor'>link to https://cj12.matiiss.com/editor</a>.
+    </body>
 </html>
