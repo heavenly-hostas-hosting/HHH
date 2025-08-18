@@ -8,31 +8,31 @@
 # -------------------------------------- IMPORTS --------------------------------------
 print("IMPORTS")
 
-from pyodide.ffi import to_js, create_proxy  # pyright: ignore[reportMissingImports]
-from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
-from pyscript import when, window, document  # pyright: ignore[reportMissingImports]
-from js import (  # pyright: ignore[reportMissingImports]
-    Math,
-    THREE,
-    Object,
-    GLTFLoader,
-    RGBELoader,
-    PointerLockControls,
-)
-
-
-from collections import defaultdict
-from enum import Enum
 import asyncio
 import json
 import warnings
+from collections import defaultdict
 
 # Typing
 from collections.abc import Callable
+from enum import Enum
 from typing import Any
 
+from js import (  # pyright: ignore[reportMissingImports]
+    THREE,
+    GLTFLoader,
+    Math,
+    Object,
+    PointerLockControls,
+    RGBELoader,
+    console,
+)
+
 # Local
-from map_loader import MAP, get_map_layout, ROOM_TYPES, get_gallery_room
+from map_loader import MAP, ROOM_TYPES, get_gallery_room, get_map_layout
+from pyodide.ffi import create_proxy, to_js  # pyright: ignore[reportMissingImports]
+from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
+from pyscript import document, when, window  # pyright: ignore[reportMissingImports]
 
 # -------------------------------------- GLOBAL VARIABLES --------------------------------------
 print("GLOBAL VARIABLES")
@@ -73,8 +73,7 @@ VELOCITY = THREE.Vector3.new()
 
 REPO_URL = (
     r"https://cdn.jsdelivr.net/gh/"
-    r"Matiiss/pydis-cj12-heavenly-hostas@dev/"
-    r"packages/gallery/assets/images/"
+    r"heavenly-hostas-hosting/HHH@data/"
 )
 
 # For Type Hinting
@@ -360,19 +359,25 @@ def load_image(image_loc: str, slot: int):
         plane.name = f"picture_{slot:03d}"
         SCENE.add(plane)
 
-    textureLoader.load(
-        REPO_URL + image_loc,
-        create_proxy(inner_loader),
-    )
+    try:
+        textureLoader.load(
+            REPO_URL + image_loc,
+            create_proxy(inner_loader),
+            None,
+            create_proxy(lambda _: None),
+        )
+    except Exception as e:
+        console.error(e)
 
 
 async def load_images_from_listing() -> None:
     # r = await pyfetch(REPO_URL + "../" + "test-image-listing.json")
-    r = await pyfetch("./assets/test-image-listing.json")
+    # r = await pyfetch("./assets/test-image-listing.json")
+    r = await pyfetch("https://cj12.matiiss.com/api/artworks")
     data = await r.text()
-    images = json.loads(data)
+    response_json = json.loads(data)
 
-    for idx, img in enumerate(images):
+    for idx, (username, img) in enumerate(response_json["artworks"]):
         load_image(img, idx)
 
 
