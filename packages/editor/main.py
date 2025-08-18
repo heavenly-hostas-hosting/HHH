@@ -317,10 +317,13 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 ui.space()
                 with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
                     ui.button("Cancel", on_click=dialog.close)
-                    ui.button(
-                        "Publish",
-                        on_click=lambda: (dialog.close(), publish()),
-                    )
+
+                    async def confirm_publish():
+                        dialog.close()
+                        await publish()
+
+                    ui.button("Publish", on_click=confirm_publish)
+
         dialog.open()
 
     async def login() -> None:
