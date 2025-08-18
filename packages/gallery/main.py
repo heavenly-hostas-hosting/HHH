@@ -171,7 +171,7 @@ KEY_MAPPINGS: dict[INPUTS, set[str]] = {
     INPUTS.UP: {"Space"},
     INPUTS.DOWN: {"ShiftLeft", "ShiftRight"},
     #
-    INPUTS.RUN: {"KeyZ"},
+    INPUTS.RUN: {"KeyZ", "ControlLeft", "ControlRight"},
 }
 KEY_STATES: dict[str, bool] = defaultdict(bool)
 document.addEventListener("keydown", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, True)))
@@ -184,6 +184,7 @@ def toggle_run(event):
         RUN_STATE = not RUN_STATE
     if event.key == "h":
         openHelpMenu()
+
 
 document.addEventListener("keydown", create_proxy(toggle_run))
 
@@ -243,6 +244,7 @@ print("MOUSE CONTROLS")
 
 MOUSE = THREE.Vector2.new()
 
+
 # Mouse Lock Functions
 def cam_lock(e):
     global CAN_MOVE
@@ -253,6 +255,7 @@ def cam_lock(e):
     )
     CAN_MOVE = True
 
+
 def cam_unlock(e):
     global CAN_MOVE
     setattr(
@@ -262,6 +265,7 @@ def cam_unlock(e):
     )
     CAN_MOVE = False
 
+
 # Mouse Lock
 CONTROLS = PointerLockControls.new(CAMERA, document.body)
 document.getElementById("instructions").addEventListener("click", create_proxy(CONTROLS.lock))
@@ -269,10 +273,7 @@ CONTROLS.addEventListener(
     "lock",
     create_proxy(cam_lock),
 )
-CONTROLS.addEventListener(
-    "unlock",
-    create_proxy(cam_unlock)
-)
+CONTROLS.addEventListener("unlock", create_proxy(cam_unlock))
 
 
 # Mouse Controls
@@ -325,14 +326,16 @@ async def check_collision_with_trigger(velocity: THREE.Vector3, delta_time: floa
 # -------------------------------------- HELP MENU --------------------------------------
 print("HELP MENU")
 
-def closeHelpMenu(e = None):
+
+def closeHelpMenu(e=None):
     help_menu = document.getElementById("help-menu")
     help_menu.close()
 
     instructions = document.getElementById("instructions")
     instructions.style.display = "block"
 
-def openHelpMenu(e = None):
+
+def openHelpMenu(e=None):
     CONTROLS.unlock()
 
     help_menu = document.getElementById("help-menu")
@@ -340,6 +343,7 @@ def openHelpMenu(e = None):
 
     instructions = document.getElementById("instructions")
     instructions.style.display = "none"
+
 
 document.getElementById("close-help-menu").addEventListener("click", create_proxy(closeHelpMenu))
 
@@ -376,7 +380,7 @@ def room_objects_handling(room: THREE.Group) -> None:
 
 
 def load_image(slot: int):
-    print(f'loading picture: {slot}')
+    print(f"loading picture: {slot}")
     if slot >= len(PAINTINGS):
         warnings.warn(
             f"WARNING: slot to be accessed '{slot}' is greater than the maximum available "
@@ -497,7 +501,7 @@ async def load_room(room: THREE.Group) -> None:
                 slot = int(p.name.split("_")[1])
                 if slot < len(IMAGES_LIST):
                     load_image(slot)
-                    print(f'loaded image {slot}')
+                    print(f"loaded image {slot}")
 
 
 async def unload_room(room: THREE.Group) -> None:
@@ -505,13 +509,13 @@ async def unload_room(room: THREE.Group) -> None:
     for p in PICTURES.children:
         if p.name.startswith(f"picture_{room.name[5:]}"):
             p.visible = False
-            print(f'{p.name} now invisible')
+            print(f"{p.name} now invisible")
 
-    print(f'{room.name} is now unloaded')
+    print(f"{room.name} is now unloaded")
 
 
 async def updated_loaded_rooms(current_room: THREE.Group, r: int = 2) -> None:
-    ''' Loads all rooms which are at some r distance from the current room '''
+    """Loads all rooms which are at some r distance from the current room"""
     print("Loading rooms...")
 
     get_chunk_coords = lambda room: sum(int(i) for i in room.name.split("_")[1:])
