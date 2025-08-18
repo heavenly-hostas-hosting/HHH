@@ -19,6 +19,15 @@
       border: none;
     }
   </style>
+  <script>
+    window.addEventListener("message", (event) => {
+        if (event.origin !== "https://cj12.matiiss.com") return;
+
+        if (event.data.action === "redirect") {
+            window.location.href = event.data.url;
+        }
+    });
+  </script>
 </head>
 <body>
   <iframe src="https://cj12.matiiss.com/editor"></iframe>
