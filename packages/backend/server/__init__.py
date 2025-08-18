@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from gotrue import CodeExchangeParams, SignInWithOAuthCredentials, SignInWithOAuthCredentialsOptions
 from pydantic import BaseModel
@@ -10,6 +11,13 @@ from pydantic import BaseModel
 from . import env, gh, pg, sb
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://heavenly-hostas-hosting.github.io"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/login")
