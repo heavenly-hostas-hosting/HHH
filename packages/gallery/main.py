@@ -26,7 +26,8 @@ from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
 from pyscript import document, when, window  # pyright: ignore[reportMissingImports]
 
 # -------------------------------------- GLOBAL VARIABLES --------------------------------------
-USE_LOCALHOST = False
+USE_LOCALHOST = True
+print("GLOBAL VARIABLES")
 
 # Renderer set up
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
@@ -278,10 +279,7 @@ CONTROLS.addEventListener(
     "lock",
     create_proxy(cam_lock),
 )
-CONTROLS.addEventListener(
-    "unlock",
-    create_proxy(cam_unlock)
-)
+CONTROLS.addEventListener("unlock", create_proxy(cam_unlock))
 
 
 # Mouse Controls
@@ -663,16 +661,57 @@ async def load_gallery() -> None:
 async def image_query_loop():
     apothem = get_room_apothem()
     while True:
-        n_added_images = await load_images_from_listing()
-        if n_added_images:
-            chunk_x, chunk_z = get_player_chunk(apothem)
-            await updated_loaded_rooms(
-                SCENE.getObjectByName(f"room_{chunk_x}_{chunk_z}"),
-                force_reload=True,
-                r=3,  # A slightly bigger radius, just in case
-            )
-
         await asyncio.sleep(15)
+
+        # Might error out because of downtime, no big deal
+        try:
+            n_added_images = await load_images_from_listing()
+            if n_added_images:
+                chunk_x, chunk_z = get_player_chunk(apothem)
+                print(f"New images to be added: {n_added_images}")
+                await updated_loaded_rooms(
+                    SCENE.getObjectByName(f"room_{chunk_x}_{chunk_z}"),
+                    force_reload=True,
+                    r=3,  # A slightly bigger radius, just in case
+                )
+        except Exception:
+            ...
+
+
+def tp_to_slot(slot: int) -> None:
+    print(f"Going to image on index {slot}...")
+    try:
+        painting = PAINTINGS[slot]
+    except IndexError:
+        print("Invalid index to tp camera to")
+        return
+    (x, y, z), (nx, ny, nz), (w, h) = get_painting_info(painting)
+    pos = THREE.Vector3.new(x, y, z)
+
+    CAMERA.position.copy(pos)
+    apothem = get_room_apothem()
+    chunk_x, chunk_z = get_player_chunk(apothem)
+    CAMERA.position.set(chunk_x * apothem * 2, CAMERA.position.y, chunk_z * apothem * 2)
+
+
+def url_process() -> None:
+    params = window.URLSearchParams.new(window.location.search)
+
+    idx_raw = params.get("idx")
+    picture = params.get("picture")
+    if idx_raw is not None:
+        idx = int(idx_raw)
+    elif picture is not None:
+        try:
+            idx = IMAGES_LIST.index(picture)
+            print(f"Image with name {picture} found")
+        except ValueError:
+            print(f"Image with name {picture} not found")
+            return
+    else:
+        return
+
+    tp_to_slot(idx)
 
 
 async def main():
@@ -684,6 +723,9 @@ async def main():
     asyncio.ensure_future(updated_loaded_rooms(SCENE.getObjectByName("room_0_0")))
 
     asyncio.ensure_future(image_query_loop())
+
+    # TP camera
+    url_process()
 
     clock = THREE.Clock.new()
     while True:
