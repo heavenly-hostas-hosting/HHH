@@ -1,6 +1,7 @@
 # This should be under the other imports but because it isn't imported in the traditional way, it's above them.
 from math import cos, pi, sin
 from typing import Literal
+
 from canvas_ctx import CanvasContext, ImageBitmap  # pyright: ignore[reportMissingImports] #
 
 # Following imports have the ignore flag as they are not pip installed
@@ -12,7 +13,6 @@ from js import (  # pyright: ignore[reportMissingImports]
     Math,
     MouseEvent,
     Object,
-    Path2D,
     createImageBitmap,
     document,
     localStorage,
@@ -81,7 +81,7 @@ ctx.text_settings = {"bold": False, "italics": False, "size": 50, "font-family":
 ctx.clipping = False
 ctx.moving_clip = False
 
-ctx.drawing_shape = False  # TODO: check
+ctx.drawing_shape = False
 
 ctx.start_coords = [0, 0]
 ctx.prev_stroke_style = "black"
@@ -505,6 +505,8 @@ def draw_shape(
 ) -> None:
     """Draw a shape to the buffer_ctx sized by the x,y given relative to the
     start x,y when the canvas was initially clicked."""
+    if not ctx.drawing_shape:
+        return
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
     init_x, init_y = ctx.start_coords
     dx = x - init_x
@@ -570,7 +572,7 @@ def mouse_tracker(event: MouseEvent) -> None:
     if not ctx.drawing:
         return
     if ctx.drawing_shape:
-        draw_shape(x, y, ctx.action)
+        draw_shape(x, y, ctx.action)  # pyright: ignore[reportArgumentType] The action will be of the correct literal
         return
     draw_action(event, x, y)
 
@@ -644,17 +646,17 @@ def drop_media(event: MouseEvent) -> None:
             canvas.height,
         )
 
-        createImageBitmap(buffer_image_data).then(
-            lambda img_bitmap: ctx.drawImage(
+        def draw_shape_to_canvas(img_bitmap) -> None:
+            ctx.drawImage(
                 img_bitmap,
                 0,
                 0,
                 canvas.width,
                 canvas.height,
-            ),
-        )
+            )
+            save_history()
 
-        save_history()
+        createImageBitmap(buffer_image_data).then(draw_shape_to_canvas)
 
 
 @when("mouseenter", "#image-canvas")
@@ -1165,6 +1167,8 @@ def load_image(event: Event = None) -> None:
         )
         if drawing_mode == "pixel":
             resize(event)
+    else:
+        save_history()  # Save the blank canvas
 
 
 if document.readyState == "loading":
@@ -1184,5 +1188,3 @@ document.addEventListener("keyup", keyup_event)
 # but the wheel event is not supported by Safari and Webviewer on iOS.
 canvas.addEventListener("wheel", handle_scroll)
 canvas.addEventListener("mousewheel", handle_scroll)
-
-save_history()
