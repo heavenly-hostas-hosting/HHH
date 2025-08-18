@@ -276,14 +276,23 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 const form = new FormData();
                 form.append("image", blob, "canvas.webp");
 
-                response = await fetch(
-                    "https://cj12.matiiss.com/api/publish",
-                    {
-                        method: "POST",
-                        credentials: "include",
-                        body: form,
-                    },
-                ).catch((e) => console.error(e));
+                if (window.top === window.self) {
+                    // not inside an iframe
+                    response = await fetch(
+                        `${apiUrl}/publish`,
+                        {
+                            method: "POST",
+                            credentials: "include",
+                            body: form,
+                        },
+                    ).catch((e) => console.error(e));
+
+                } else {
+                    // inside an iframe
+                    response = await requestFromParent(
+                        "POST", "/publish", form
+                    );
+                }
 
                 return response.ok;
                 """,
@@ -305,17 +314,14 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         try:
             await ui.run_javascript(
                 """
-                const redirectUrl = "https://cj12.matiiss.com/api/login";
+                const redirectUrl = `${apiUrl}/login`;
 
                 if (window.top === window.self) {
                     // not inside an iframe
                     window.location.href = redirectUrl;
                 } else {
                     // inside an iframe
-                    window.parent.postMessage(
-                        { action: "redirect", url: redirectUrl },
-                        "https://heavenly-hostas-hosting.github.io/HHH"
-                    );
+                    redirectFromParent(redirectUrl);
                 }
 
                 sessionStorage.setItem("cj12-hhh-logged-in", "true");
@@ -340,17 +346,14 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         try:
             await ui.run_javascript(
                 """
-                const redirectUrl = "https://cj12.matiiss.com/api/logout";
+                const redirectUrl = `${apiUrl}/logout`;
 
                 if (window.top === window.self) {
                     // not inside an iframe
                     window.location.href = redirectUrl;
                 } else {
                     // inside an iframe
-                    window.parent.postMessage(
-                        { action: "redirect", url: redirectUrl },
-                        "https://heavenly-hostas-hosting.github.io/HHH"
-                    );
+                    redirectFromParent(redirectUrl);
                 }
 
                 sessionStorage.setItem("cj12-hhh-logged-in", "false");
@@ -373,17 +376,30 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         try:
             response = await ui.run_javascript(
                 """
-                response = await fetch(
-                    "https://cj12.matiiss.com/api/status",
-                    {
-                        method: "GET",
-                        credentials: "include",
-                    },
-                ).catch((e) => console.error(e));
 
-                sessionStorage.setItem("cj12-hhh-logged-in", response.json()['logged_in']);
+                if (window.top === window.self) {
+                    // not inside an iframe
+                    response = await fetch(
+                        `${apiUrl}/status`,
+                        {
+                            method: "GET",
+                            credentials: "include",
+                        },
+                    ).catch((e) => console.error(e));
 
-                return response;
+                    response_json = response.json();
+                } else {
+                    // inside an iframe
+                    response = await requestFromParent(
+                        "GET", "/status", null
+                    ).catch((e) => console.error(e));
+
+                    response_json = response.body;
+                }
+
+                sessionStorage.setItem("cj12-hhh-logged-in", response_json['logged_in']);
+
+                return response_json;
                 """,
                 timeout=60,
             )
@@ -436,6 +452,64 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             loading.showModal();
 
             window.onload = () => {emitEvent('content_loaded');};
+
+            let nextMessageId = 0;
+            const pendingRequests = new Map();
+            const parentOrigin = "https://heavenly-hostas-hosting.github.io";
+            window.apiUrl = "https://cj12.matiiss.com/api";
+
+            window.requestFromParent = (method, endpoint, payload) => {
+                return new Promise((resolve, reject) => {
+                    const messageId = nextMessageId++;
+                    pendingRequests.set(messageId, resolve);
+
+                    const timer = setTimeout(() => {
+                        if (pendingRequests.has(messageId)) {
+                            pendingRequests.get(messageId).reject(new Error("Request timed out"));
+                            pendingRequests.delete(messageId);
+                        }
+                    }, timeoutS * 1000);
+
+                    pendingRequests.set(messageId, {
+                        resolve: (data) => { clearTimeout(timer); resolve(data); },
+                        reject: (err) => { clearTimeout(timer); reject(err); }
+                    });
+
+                    window.parent.postMessage({
+                        type: "REQUEST",
+                        method,
+                        messageId,
+                        endpoint,
+                        payload
+                    }, parentOrigin);
+                });
+            }
+
+            window.redirectFromParent = (url) => {
+                window.parent.postMessage({
+                    type: "REDIRECT",
+                    url,
+                }, parentOrigin);
+            }
+
+            window.addEventListener("message", (event) => {
+                if (event.origin !== parentOrigin) {
+                    return;
+                }
+
+                const data = event.data;
+                if (data.type === "RESPONSE" && pendingRequests.has(data.messageId)) {
+                    const { resolve, reject } = pendingRequests.get(data.messageId);
+
+                    if (!data.response.ok) {
+                        reject(new Error(`Request failed with status ${data.response.status}`));
+                    } else {
+                        resolve(data.response);
+                    }
+
+                    pendingRequests.delete(data.messageId);
+                }
+            });
         </script>
     """)
 
