@@ -36,8 +36,12 @@
         <script type="module">
             const loading = document.getElementById('loading');
             addEventListener('py:ready', () => loading.close());
+
+            const help_menu = document.getElementById('help-menu');
+            addEventListener('py:ready', () => help_menu.showModal());
+
             const instructions = document.getElementById('instructions')
-            addEventListener('py:ready', () => instructions.style.display='block');
+
             loading.showModal();
         </script>
 
@@ -49,6 +53,20 @@
     <body>
         <dialog id="loading">
             <h1>Loading...</h1>
+        </dialog>
+
+        <dialog id="help-menu">
+            <p>
+                <h1>HELP MENU</h1>
+                <ol>
+                    <li>WASD or arrow keys to move forward, left, backward and right respectively.</li>
+                    <li>Z toggles run</li>
+                    <li>Space to up and Shift to go down</li>
+                    <li>H to open help menu</li>
+                </ol>
+            </p>
+
+            <button id="close-help-menu">Close</button>
         </dialog>
 
         <div id="instructions">Click here to look and move around!</div>

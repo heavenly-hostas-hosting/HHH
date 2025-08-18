@@ -173,7 +173,8 @@ def toggle_run(event):
     global RUN_STATE
     if event.code in KEY_MAPPINGS[INPUTS.RUN]:
         RUN_STATE = not RUN_STATE
-
+    if event.key == "h":
+        openHelpMenu()
 
 document.addEventListener("keydown", create_proxy(toggle_run))
 
@@ -296,6 +297,28 @@ def check_collision_with_wall(velocity: THREE.Vector3, delta_time: float, raycas
     if not intersections:
         return True
     return intersections[0].distance > velocity.length() * delta_time + OFFSET
+
+
+# -------------------------------------- HELP MENU --------------------------------------
+print("HELP MENU")
+
+def closeHelpMenu(e = None):
+    help_menu = document.getElementById("help-menu")
+    help_menu.close()
+
+    instructions = document.getElementById("instructions")
+    instructions.style.display = "block"
+
+def openHelpMenu(e = None):
+    CONTROLS.unlock()
+
+    help_menu = document.getElementById("help-menu")
+    help_menu.showModal()
+
+    instructions = document.getElementById("instructions")
+    instructions.style.display = "none"
+
+document.getElementById("close-help-menu").addEventListener("click", create_proxy(closeHelpMenu))
 
 
 # -------------------------------------- ROOM CREATION --------------------------------------
