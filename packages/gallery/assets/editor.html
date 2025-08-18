@@ -29,13 +29,17 @@
 
       if (data.type === "REQUEST") {
         try {
-          const res = await fetch(`${apiUrl}${data.endpoint}`, {
+          const options = {
             method: data.method,
             credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data.payload),
-          });
+          };
 
+          if (data.payload != null) {
+            options.headers = { "Content-Type": "application/json" };
+            options.body = JSON.stringify(data.payload);
+          };
+
+          const res = await fetch(`${apiUrl}${data.endpoint}`, options);
           const body = await res.json().catch(() => null);
 
           event.source.postMessage(
