@@ -1,0 +1,48 @@
+
+#loading {
+	outline: none; border: none; background: transparent
+}
+
+
+#instructions {
+	position: absolute;
+	top: 14%;
+	left: 50%;
+	transform: translate(-50%, -50%); /* perfectly center horizontally & vertically */
+	max-width: 80%; /* optional, keeps text from stretching too wide */
+	text-align: center;
+	color: black;
+	font-size: 28px;
+	font-family: sans-serif;
+	font-weight: bold;
+	background-color: white; /* highlight effect */
+	padding: 12px 20px; /* padding inside box */
+	border-radius: 8px; /* rounded corners */
+	box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* subtle shadow for depth */
+	display: none;
+	cursor: pointer;
+}
+
+
+#editor {
+	position: absolute;
+	top: 20%;
+	left: 50%;
+	transform: translate(-50%, -50%); /* perfectly center horizontally & vertically */
+	max-width: 80%; /* optional, keeps text from stretching too wide */
+	text-align: center;
+	color: black;
+	font-size: 28px;
+	font-family: sans-serif;
+	font-weight: bold;
+	background-color: white; /* highlight effect */
+	padding: 12px 20px; /* padding inside box */
+	border-radius: 8px; /* rounded corners */
+	box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* subtle shadow for depth */
+	display: none;
+}
+
+
+body {
+	margin: 0;
+}
