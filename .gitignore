@@ -30,8 +30,7 @@ build/
 # MacOS
 .DS_Store
 
-# For now we're keeping .blend files out of the repo
-*.blend
+# We're keeping .blend backup files out of the repo
 *.blend1
 
 # supabase volumes
