@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 
-@app.post("/login")
+@app.get("/login")
 async def login() -> Response:
     sb_client = await sb.create_public_client()
 
@@ -43,7 +43,7 @@ async def login() -> Response:
     return response
 
 
-@app.post("/logout")
+@app.get("/logout")
 async def logout(request: Request) -> Response:
     sb_client = await sb.get_session(request)
     await sb_client.auth.sign_out()
