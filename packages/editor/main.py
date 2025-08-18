@@ -384,7 +384,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
                 publish_button.move(hidden_buttons)
                 logout_button.move(hidden_buttons)
-                ui.notify("You were logged out. Please login again.")
+                # ui.notify("You were logged out. Please login again.")
 
         except Exception as e:
             ui.notify(f"An error occurred: {e}", type="negative")
