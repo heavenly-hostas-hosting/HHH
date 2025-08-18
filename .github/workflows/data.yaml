@@ -1,7 +1,8 @@
 name: Validate and auto-handle PR
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened]
     branches:
       - data
 
@@ -47,7 +48,7 @@ jobs:
             exit 0
           fi
 
-          commit_hash=$(git rev-parse HEAD)
+          commit_hash=${{ github.event.pull_request.head.sha }}
           filename="$files"
 
           echo "Commit: $commit_hash"
