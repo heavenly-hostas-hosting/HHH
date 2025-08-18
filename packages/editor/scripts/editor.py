@@ -471,13 +471,29 @@ def get_star_shape_points(
 def draw_python_logo(
     x: float | int,
     y: float | int,
-    dx: float | int,
-    dy: float | int,
 ):
     """Draw python logo."""
     buffer_ctx.save()
-    buffer_ctx.translate(x, y)
-    buffer_ctx.scale(dx / 40, dy / 40)
+    x0, y0 = ctx.start_coords
+    x1, y1 = x, y
+
+    left = min(x0, x1)
+    top = min(y0, y1)
+    width = abs(x1 - x0)
+    height = abs(y1 - y0)
+
+    buffer_ctx.translate(left, top)
+
+    scale_x = width / 40
+    scale_y = height / 40
+    if x1 < x0:
+        buffer_ctx.translate(width, 0)
+        scale_x *= -1
+    if y1 < y0:
+        buffer_ctx.translate(0, height)
+        scale_y *= -1
+
+    buffer_ctx.scale(scale_x, scale_y)
 
     # the two rounded rects forming a cross.
     buffer_ctx.beginPath()
@@ -542,7 +558,7 @@ def draw_shape(
             buffer_ctx.fill()
             return
         case "python":
-            draw_python_logo(x, y, dx, dy)
+            draw_python_logo(x, y)
             return
 
         case "triangle":
