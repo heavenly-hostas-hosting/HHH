@@ -154,10 +154,8 @@ KEY_MAPPINGS: dict[INPUTS, set[str]] = {
     INPUTS.LEFT: {"KeyH", "KeyA", "ArrowLeft"},
     INPUTS.RIGHT: {"KeyL", "KeyD", "ArrowRight"},
     INPUTS.BACK: {"KeyJ", "KeyS", "ArrowDown"},
-    #
     INPUTS.UP: {"Space"},
     INPUTS.DOWN: {"ShiftLeft", "ShiftRight"},
-    #
     INPUTS.RUN: {"KeyZ"},
 }
 KEY_STATES: dict[str, bool] = defaultdict(bool)
