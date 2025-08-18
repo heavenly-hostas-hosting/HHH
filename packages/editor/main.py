@@ -129,18 +129,18 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         """Change RGB values."""
         hex_value = ""
         for x in range(SPIN_COUNT):
+            hex_value = ""
             for y in range(3):
                 text = random.choice(HEX) + random.choice(HEX)  # noqa: S311 This isn't for cryptography
                 colour_values[y].text = text
-                if x == SPIN_COUNT - 1:
-                    hex_value += text
+                hex_value += text
             await asyncio.sleep(0.1)
-        ui.run_javascript(f"""
-            window.pen = window.pen || {{}};
-            window.pen.colour = "#{hex_value}";
-            const event = new Event('colourChange');
-            document.body.dispatchEvent(event);
-        """)
+            ui.run_javascript(f"""
+                window.pen = window.pen || {{}};
+                window.pen.colour = "#{hex_value}";
+                const event = new Event('colourChange');
+                document.body.dispatchEvent(event);
+            """)
 
     def upload_image(e: UploadEventArguments) -> None:
         """Fire upload event."""
