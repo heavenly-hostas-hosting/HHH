@@ -278,7 +278,10 @@ CONTROLS.addEventListener(
     "lock",
     create_proxy(cam_lock),
 )
-CONTROLS.addEventListener("unlock", create_proxy(cam_unlock))
+CONTROLS.addEventListener(
+    "unlock",
+    create_proxy(cam_unlock)
+)
 
 
 # Mouse Controls
@@ -335,6 +338,9 @@ def closeHelpMenu(e=None):
     instructions = document.getElementById("instructions")
     instructions.style.display = "block"
 
+    editor = document.getElementById("editor")
+    editor.style.display = "block"
+
 
 def openHelpMenu(e=None):
     CONTROLS.unlock()
@@ -344,6 +350,9 @@ def openHelpMenu(e=None):
 
     instructions = document.getElementById("instructions")
     instructions.style.display = "none"
+
+    editor = document.getElementById("editor")
+    editor.style.display = "none"
 
 
 document.getElementById("close-help-menu").addEventListener("click", create_proxy(closeHelpMenu))

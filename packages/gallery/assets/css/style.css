@@ -69,6 +69,10 @@ button {
 	cursor: pointer;
 }
 
+#loading_tips {
+	font-size: 20px;
+}
+
 body {
 	margin: 0;
 }

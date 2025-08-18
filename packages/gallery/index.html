@@ -29,24 +29,29 @@
             window.GLTFLoader = GLTFLoader;
             window.RGBELoader = RGBELoader;
             window.PointerLockControls = PointerLockControls;
-
         </script>
-        <!-- for splashscreen -->
+
+        <!-- for Loading Screen and Tips -->
         <link rel="stylesheet" href="assets/css/style.css">
         <script type="module">
             const loading = document.getElementById('loading');
             addEventListener('py:ready', () => loading.close());
 
-            const help_menu = document.getElementById('help-menu');
-            addEventListener('py:ready', () => help_menu.showModal());
+            let tips = [
+                "HHH will never ask for your github password.",
+                "Only you can prevent pr scams."
+            ];
 
-            const instructions = document.getElementById('instructions')
-
-            addEventListener('py:ready', () => instructions.style.display='block');
-            const editor = document.getElementById('editor')
-            addEventListener('py:ready', () => editor.style.display='block');
+            let random_tip = tips[Math.floor(Math.random() * tips.length)];
+            document.getElementById('loading_tips').innerText = random_tip;
 
             loading.showModal();
+        </script>
+
+        <!-- Help Menu -->
+        <script type="module">
+            const help_menu = document.getElementById('help-menu');
+            addEventListener('py:ready', () => help_menu.showModal());
         </script>
 
         <title>Image Gallery</title>
@@ -56,7 +61,8 @@
 
     <body>
         <dialog id="loading">
-            <h1>Loading...</h1>
+            <center><h1>Loading...</h1></center>
+            <p id="loading_tips"></p>
         </dialog>
 
         <dialog id="help-menu">
