@@ -65,6 +65,10 @@ GALLERY_BLOCKS: dict[ROOM_TYPES, THREE.Group] = {}
 ROOMS: list[THREE.Group] = []  # a list of all rooms in the scene
 PAINTINGS: list[THREE.Object3D] = []  # a list of all the paintings in the scene
 
+# Related to Moving
+RUN_STATE: bool = False  # to toggle running
+CAN_MOVE: bool = False  # so that the player cant move unless he is "locked in"
+
 # distance which we maintain from walls
 OFFSET = 0.2
 
@@ -164,9 +168,6 @@ KEY_STATES: dict[str, bool] = defaultdict(bool)
 document.addEventListener("keydown", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, True)))
 document.addEventListener("keyup", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, False)))
 
-# Global variable to toggle running
-RUN_STATE = False
-
 
 def toggle_run(event):
     global RUN_STATE
@@ -178,7 +179,9 @@ document.addEventListener("keydown", create_proxy(toggle_run))
 
 
 # Main move function
-def move_character(delta_time: float):
+def move_character(delta_time: float) -> THREE.Vector3:
+    if not CAN_MOVE:
+        return THREE.Vector3.new(0, 0, 0)
     pressed_keys = {k for k, v in KEY_MAPPINGS.items() if any(KEY_STATES[i] for i in v)}
     damping = 8
     if RUN_STATE:
@@ -230,28 +233,35 @@ print("MOUSE CONTROLS")
 
 MOUSE = THREE.Vector2.new()
 
+# Mouse Lock Functions
+def cam_lock(e):
+    global CAN_MOVE
+    setattr(
+        document.getElementById("instructions").style,
+        "display",
+        "none",
+    )
+    CAN_MOVE = True
+
+def cam_unlock(e):
+    global CAN_MOVE
+    setattr(
+        document.getElementById("instructions").style,
+        "display",
+        "block",
+    )
+    CAN_MOVE = False
+
 # Mouse Lock
 CONTROLS = PointerLockControls.new(CAMERA, document.body)
 document.getElementById("instructions").addEventListener("click", create_proxy(CONTROLS.lock))
 CONTROLS.addEventListener(
     "lock",
-    create_proxy(
-        lambda x: setattr(
-            document.getElementById("instructions").style,
-            "display",
-            "none",
-        ),
-    ),
+    create_proxy(cam_lock),
 )
 CONTROLS.addEventListener(
     "unlock",
-    create_proxy(
-        lambda x: setattr(
-            document.getElementById("instructions").style,
-            "display",
-            "block",
-        ),
-    ),
+    create_proxy(cam_unlock)
 )
 
 
@@ -535,6 +545,8 @@ async def main():
     while True:
         delta = clock.getDelta()
         velocity = move_character(delta)
+        if velocity == THREE.Vector3.new(0, 0, 0):
+            continue
         if check_collision(velocity, delta):
             CAMERA.position.addScaledVector(velocity, delta)
 
