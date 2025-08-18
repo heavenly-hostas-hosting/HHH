@@ -26,7 +26,7 @@ from pyodide.http import pyfetch  # pyright: ignore[reportMissingImports]
 from pyscript import document, when, window  # pyright: ignore[reportMissingImports]
 
 # -------------------------------------- GLOBAL VARIABLES --------------------------------------
-USE_LOCALHOST = True
+USE_LOCALHOST = False
 print("GLOBAL VARIABLES")
 
 # Renderer set up
