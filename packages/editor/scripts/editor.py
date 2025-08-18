@@ -1,4 +1,7 @@
 # This should be under the other imports but because it isn't imported in the traditional way, it's above them.
+from math import cos, pi, sin
+from typing import Literal
+
 from canvas_ctx import CanvasContext, ImageBitmap  # pyright: ignore[reportMissingImports]
 
 # Following imports have the ignore flag as they are not pip installed
@@ -77,6 +80,7 @@ ctx.prev_operation = "source-over"
 ctx.text_settings = {"bold": False, "italics": False, "size": 50, "font-family": "Arial"}
 ctx.clipping = False
 ctx.moving_clip = False
+ctx.drawing_shape = False
 ctx.start_coords = [0, 0]
 ctx.prev_stroke_style = "black"
 ctx.prev_line_width = 5
@@ -166,7 +170,6 @@ def draw_pixel(x: float, y: float) -> None:
     Args:
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     ctx.fillStyle = ctx.strokeStyle
     ctx.fillRect(x - PIXEL_SIZE // 2, y - PIXEL_SIZE // 2, PIXEL_SIZE, PIXEL_SIZE)
@@ -181,23 +184,25 @@ def show_action_icon(x: float, y: float) -> bool:
 
     Returns:
         bool: If True is returned mousemove doesn't do anything else
-
     """
 
     def draw_clip(img_bitmap: ImageBitmap) -> None:
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+        # Canvas matrix to cursor coords first
         buffer_ctx.translate(
             x,
             y,
         )
-        buffer_ctx.rotate(ctx.rotation)
+        buffer_ctx.rotate(ctx.rotation)  # Apply rotation
+
+        # Ratio for scaling up/down
         ratio = img_bitmap.width / img_bitmap.height
 
         if img_bitmap.width < img_bitmap.height:
             buffer_ctx.strokeRect(
-                -(img_bitmap.width + ctx.size_change) / 2,
-                -(img_bitmap.height + ctx.size_change * ratio) / 2,
+                -(img_bitmap.width + ctx.size_change) / 2,  # Shift the horizontal centre to be on the cursor
+                -(img_bitmap.height + ctx.size_change * ratio) / 2,  # Shift the verical centre to be on the cursor
                 img_bitmap.width + ctx.size_change,
                 img_bitmap.height + ctx.size_change * ratio,
             )
@@ -222,7 +227,10 @@ def show_action_icon(x: float, y: float) -> bool:
                 img_bitmap.width + ctx.size_change * ratio,
                 img_bitmap.height + ctx.size_change,
             )
-        buffer_ctx.rotate(-ctx.rotation)
+
+        buffer_ctx.rotate(-ctx.rotation)  # Undo rotation
+
+        # Move canvas matrix back to top left corner
         buffer_ctx.translate(
             -x,
             -y,
@@ -231,14 +239,18 @@ def show_action_icon(x: float, y: float) -> bool:
     if ctx.moving_clip:
         createImageBitmap(ctx.prev_data).then(draw_clip)
         return True
+
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
     if ctx.moving_image:
         buffer_ctx.translate(
             x,
             y,
         )
         buffer_ctx.rotate(ctx.rotation)
+
         ratio = ctx.current_img.width / ctx.current_img.height
+
         if ctx.current_img.width < ctx.current_img.height:
             buffer_ctx.drawImage(
                 ctx.current_img,
@@ -261,6 +273,7 @@ def show_action_icon(x: float, y: float) -> bool:
             -x,
             -y,
         )
+
         return True
     if ctx.writing_text and not ctx.text_placed:
         buffer_ctx.translate(
@@ -268,17 +281,20 @@ def show_action_icon(x: float, y: float) -> bool:
             y,
         )
         buffer_ctx.rotate(ctx.rotation)
+
         text_dimensions = ctx.measureText(ctx.text_value)
         buffer_ctx.fillText(
             ctx.text_value,
             -text_dimensions.width / 2,
             (text_dimensions.actualBoundingBoxAscent + text_dimensions.actualBoundingBoxDescent) / 2,
         )
+
         buffer_ctx.rotate(-ctx.rotation)
         buffer_ctx.translate(
             -x,
             -y,
         )
+
         return True
     if ctx.clipping:
         buffer_ctx.strokeRect(
@@ -288,6 +304,7 @@ def show_action_icon(x: float, y: float) -> bool:
             y - ctx.start_coords[1],
         )
         return True
+
     regular_icon_show(x, y)
     return False
 
@@ -298,7 +315,6 @@ def regular_icon_show(x: float, y: float) -> None:
     Args:
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     if ctx.type == "smooth":
         buffer_ctx.beginPath()
@@ -308,11 +324,13 @@ def regular_icon_show(x: float, y: float) -> None:
         elif ctx.action == "eraser":
             prev_width = buffer_ctx.lineWidth
             prev_fill = buffer_ctx.fillStyle
+
             buffer_ctx.lineWidth = ctx.scaled_by
             buffer_ctx.fillStyle = "white"
             buffer_ctx.fill()
             buffer_ctx.arc(x, y, ctx.lineWidth / 2, 0, 2 * Math.PI)
             buffer_ctx.stroke()
+
             buffer_ctx.lineWidth = prev_width
             buffer_ctx.fillStyle = prev_fill
 
@@ -352,7 +370,6 @@ def draw_smudge(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The javascript mouse event
-
     """
     x, y = get_canvas_coords(event)
     # draw the pevious smudge data at the current xy.
@@ -369,7 +386,6 @@ def get_canvas_coords(event: MouseEvent) -> tuple[float, float]:
 
     Returns:
         tuple[float, float]: The x and y coordinates
-
     """
     x = (event.pageX - ctx.bounding_rect.left) * ctx.scaled_by
     y = (event.pageY - ctx.bounding_rect.top) * ctx.scaled_by
@@ -385,7 +401,6 @@ def start_path(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if event.button != 0:
         return
@@ -404,13 +419,156 @@ def start_path(event: MouseEvent) -> None:
         ctx.moveTo(x, y)
 
 
+def get_triangle_shape_points(
+    x: float | int,
+    y: float | int,
+    dx: float | int,
+    dy: float | int,
+):
+    """Get the points in a triangle shape given the start coordinate x,y and
+    the size of the triangle dx, dy."""
+    top_mid_point = (x + (dx / 2), y)
+    bot_left_point = (x, y + dy)
+    bot_right_point = (x + dx, y + dy)
+    return [top_mid_point, bot_left_point, bot_right_point]
+
+
+def get_star_shape_points(
+    x: float | int,
+    y: float | int,
+    dx: float | int,
+    dy: float | int,
+):
+    """Get the points in a star shape given the start coordinate x,y and the
+    size of the star dx, dy."""
+    center_x = x + dx / 2
+    center_y = y + dy / 2
+
+    outer_radius_x = dx / 2
+    inner_radius_x = outer_radius_x / 2
+
+    outer_radius_y = dy / 2
+    inner_radius_y = outer_radius_y / 2
+
+    NO_OF_STAR_POINTS = 5
+
+    points: list[tuple[float, float]] = []
+
+    for i in range(NO_OF_STAR_POINTS * 2):
+        angle = i * pi / NO_OF_STAR_POINTS  # 10 points in the star including inner points.
+
+        radius_x = outer_radius_x if i % 2 == 0 else inner_radius_x
+        radius_y = outer_radius_y if i % 2 == 0 else inner_radius_y
+
+        px = center_x + cos(angle) * radius_x
+        py = center_y + sin(angle) * radius_y
+
+        points.append((px, py))
+
+    return points
+
+
+def draw_python_logo(
+    x: float | int,
+    y: float | int,
+    dx: float | int,
+    dy: float | int,
+):
+    """Draw python logo."""
+    buffer_ctx.save()
+    buffer_ctx.translate(x, y)
+    buffer_ctx.scale(dx / 40, dy / 40)
+
+    # the two rounded rects forming a cross.
+    buffer_ctx.beginPath()
+    buffer_ctx.roundRect(10, 0, 20, 40, [10, 5])
+    buffer_ctx.roundRect(0, 10, 40, 20, [5, 10])
+    buffer_ctx.fill()
+
+    # the two eyes for each of the snakey bois. O.o
+    buffer_ctx.beginPath()
+    buffer_ctx.arc(14.5, 5, 1.85, 0, 2 * pi)
+    buffer_ctx.arc(25.5, 35, 1.85, 0, 2 * pi)
+    buffer_ctx.fillStyle = "white"
+    buffer_ctx.fill()
+
+    # the lines that make the mouth of the snakey bois. :)
+    buffer_ctx.lineWidth = 1
+    buffer_ctx.beginPath()
+    buffer_ctx.moveTo(10, 9.5)
+    buffer_ctx.lineTo(20, 9.5)
+    buffer_ctx.moveTo(20, 30.5)
+    buffer_ctx.lineTo(30, 30.5)
+    buffer_ctx.strokeStyle = "white"
+    buffer_ctx.stroke()
+
+    # The lines the seperates the snakey bois from one another. :) :)
+    buffer_ctx.beginPath()
+    buffer_ctx.moveTo(9.5, 30)
+    buffer_ctx.bezierCurveTo(9.5, 20, 12, 20, 19.5, 20)
+    buffer_ctx.bezierCurveTo(28, 20, 30.5, 20, 30.5, 10)
+    buffer_ctx.stroke()
+
+    buffer_ctx.restore()
+    return
+
+
+def draw_shape(
+    x: float | int,
+    y: float | int,
+    shape_type: Literal["rectangle", "triangle", "star"],
+) -> None:
+    """Draw a shape to the buffer_ctx sized by the x,y given relative to the
+    start x,y when the canvas was initially clicked."""
+    if not ctx.drawing_shape:
+        return
+    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+    init_x, init_y = ctx.start_coords
+    dx = x - init_x
+    dy = y - init_y
+    match shape_type:
+        case "rectangle":
+            buffer_ctx.fillRect(init_x, init_y, dx, dy)
+            return
+        case "circle":
+            buffer_ctx.ellipse(
+                init_x + dx / 2,
+                init_y + dy / 2,
+                abs(dx),
+                abs(dy),
+                0,
+                0,
+                2 * pi,
+            )
+            buffer_ctx.fill()
+            return
+        case "python":
+            draw_python_logo(x, y, dx, dy)
+            return
+
+        case "triangle":
+            points = get_triangle_shape_points(init_x, init_y, dx, dy)
+
+        case "star":
+            points = get_star_shape_points(init_x, init_y, dx, dy)
+
+    buffer_ctx.beginPath()
+    buffer_ctx.moveTo(points[0][0], points[0][1])
+    for px, py in points[1:]:
+        buffer_ctx.lineTo(px, py)
+
+    buffer_ctx.closePath()
+    buffer_ctx.fill()
+    buffer_ctx.stroke()
+    return
+
+
 @when("mousemove", "#image-canvas")
 def mouse_tracker(event: MouseEvent) -> None:
     """Draw the path following the mouse.
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     x, y = get_canvas_coords(event)
     ctx.current_position = [x, y]
@@ -428,6 +586,9 @@ def mouse_tracker(event: MouseEvent) -> None:
         return
     if not ctx.drawing:
         return
+    if ctx.drawing_shape:
+        draw_shape(x, y, ctx.action)  # pyright: ignore[reportArgumentType] The action will be of the correct literal
+        return
     draw_action(event, x, y)
 
 
@@ -438,13 +599,12 @@ def draw_action(event: MouseEvent, x: float, y: float) -> None:
         event (MouseEvent): Mouse event
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     match ctx.type:
         case "smooth":
             if ctx.action == "smudge":
                 draw_smudge(event)
-            elif ctx.action in ("pen", "eraser"):  # this is "pen" or "eraser"
+            elif ctx.action in ("pen", "eraser"):
                 ctx.lineTo(x, y)
                 ctx.stroke()
         case "pixel":
@@ -460,7 +620,6 @@ def stop_path(_: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if ctx.drawing and not ctx.clipping:
         ctx.drawing = False
@@ -473,14 +632,14 @@ def drop_media(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): Mouse event
-
     """
+    x, y = get_canvas_coords(event)
     if ctx.text_placed:
         ctx.writing_text = False
     if ctx.clipping:
         ctx.clipping = False
         ctx.moving_clip = True
-        x, y = get_canvas_coords(event)
+
         ctx.prev_data = ctx.getImageData(
             ctx.start_coords[0],
             ctx.start_coords[1],
@@ -493,6 +652,27 @@ def drop_media(event: MouseEvent) -> None:
             x - ctx.start_coords[0],
             y - ctx.start_coords[1],
         )
+    if ctx.drawing_shape:
+        ctx.drawing_shape = False
+
+        buffer_image_data = buffer_ctx.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+        )
+
+        def draw_shape_to_canvas(img_bitmap) -> None:
+            ctx.drawImage(
+                img_bitmap,
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+            )
+            save_history()
+
+        createImageBitmap(buffer_image_data).then(draw_shape_to_canvas)
 
 
 @when("mouseenter", "#image-canvas")
@@ -501,7 +681,6 @@ def start_reentry_path(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): Mouse event
-
     """
     if ctx.drawing:
         x, y = get_canvas_coords(event)
@@ -515,10 +694,10 @@ def leaves_canvas(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
-    if not ctx.drawing or ctx.clipping:
+    if not ctx.drawing or ctx.clipping or ctx.drawing_shape:
         return
+
     if ctx.type == "smooth" and ctx.action != "smudge":  # "pen" or "eraser"
         x, y = get_canvas_coords(event)
         ctx.lineTo(x, y)
@@ -531,7 +710,6 @@ def canvas_click(event: MouseEvent) -> None:
 
     Args:
         event (MouseEvent): The mouse event
-
     """
     if event.button != 0:
         return
@@ -542,15 +720,23 @@ def canvas_click(event: MouseEvent) -> None:
         if ctx.action == "clip" and not ctx.moving_clip:
             ctx.clipping = True
             ctx.start_coords = [x, y]
+
             ctx.setLineDash([2, 10])
             buffer_ctx.setLineDash([2, 10])
+
             ctx.prev_stroke_style = ctx.strokeStyle
             ctx.prev_line_width = ctx.lineWidth
 
             ctx.strokeStyle = "black"
             ctx.lineWidth = 5
+
             buffer_ctx.strokeStyle = "black"
             buffer_ctx.lineWidth = 5
+
+        elif ctx.action in ("circle", "rectangle", "triangle", "star", "python"):
+            ctx.drawing_shape = True
+            ctx.start_coords = [x, y]
+
         else:
             ctx.beginPath()
             ctx.ellipse(x, y, ctx.lineWidth / 100, ctx.lineWidth / 100, 0, 0, 2 * Math.PI)  # Put a dot here
@@ -572,7 +758,6 @@ def special_actions(x: float, y: float) -> bool:
 
     Returns:
         bool: Whether to skip the regular drawing process or not
-
     """
     if ctx.moving_image:
         draw_image(x, y)
@@ -580,12 +765,15 @@ def special_actions(x: float, y: float) -> bool:
         return True
     if ctx.writing_text:
         ctx.text_placed = True
+
         buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
         ctx.translate(
             x,
             y,
         )
         ctx.rotate(ctx.rotation)
+
         text_dimensions = ctx.measureText(ctx.text_value)
 
         ctx.fillText(
@@ -609,11 +797,13 @@ def special_actions(x: float, y: float) -> bool:
 
         def draw_clip(img_bitmap: ImageBitmap) -> None:
             buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
             ctx.translate(
                 x,
                 y,
             )
             ctx.rotate(ctx.rotation)
+
             ratio = img_bitmap.width / img_bitmap.height
 
             if img_bitmap.width < img_bitmap.height:
@@ -643,8 +833,10 @@ def special_actions(x: float, y: float) -> bool:
             ctx.rotation = 0
 
         createImageBitmap(ctx.prev_data).then(draw_clip)
+
         ctx.setLineDash([])
         buffer_ctx.setLineDash([])
+
         ctx.strokeStyle = ctx.prev_stroke_style
         ctx.lineWidth = ctx.prev_line_width
 
@@ -661,16 +853,19 @@ def draw_image(x: float, y: float) -> None:
     Args:
         x (float): X coordinate
         y (float): Y coordinate
-
     """
     ctx.moving_image = False
+
     buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
+
     ctx.translate(
         x,
         y,
     )
     ctx.rotate(ctx.rotation)
+
     ratio = ctx.current_img.width / ctx.current_img.height
+
     if ctx.current_img.width < ctx.current_img.height:
         ctx.drawImage(
             ctx.current_img,
@@ -687,13 +882,15 @@ def draw_image(x: float, y: float) -> None:
             ctx.current_img.width + ctx.size_change * ratio,
             ctx.current_img.height + ctx.size_change,
         )
-    ctx.globalCompositeOperation = ctx.prev_operation
-    ctx.size_change = 0
+
     ctx.rotate(-ctx.rotation)
     ctx.translate(
         -x,
         -y,
     )
+
+    ctx.globalCompositeOperation = ctx.prev_operation
+    ctx.size_change = 0
     ctx.rotation = 0
     save_history()
 
@@ -704,10 +901,10 @@ def colour_change(_: Event) -> None:
 
     Args:
         _ (Event): Change event
-
     """
     ctx.strokeStyle = window.pen.colour
     ctx.fillStyle = window.pen.colour
+
     buffer_ctx.strokeStyle = window.pen.colour
     buffer_ctx.fillStyle = window.pen.colour
 
@@ -718,7 +915,6 @@ def width_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
-
     """
     ctx.lineWidth = int(event.target.getAttribute("aria-valuenow"))
     buffer_ctx.lineWidth = ctx.lineWidth
@@ -730,18 +926,13 @@ def action_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
-
     """
     ctx.action = event.target.getAttribute("value")
     match ctx.action:
-        case "pen":
+        case "pen" | "smudge" | "clip":
             ctx.globalCompositeOperation = "source-over"
         case "eraser":
             ctx.globalCompositeOperation = "destination-out"
-        case "smudge":
-            ctx.globalCompositeOperation = "source-over"
-        case "clip":
-            ctx.globalCompositeOperation = "source-over"
 
 
 @when("addText", "#text-input")
@@ -750,16 +941,18 @@ def add_text(_: Event) -> None:
 
     Args:
         _ (Event): Add text event
-
     """
     ctx.text_value = text_input.value
     if ctx.text_value:
         ctx.writing_text = True
         ctx.text_placed = False
+
         ctx.prev_operation = ctx.globalCompositeOperation
         ctx.globalCompositeOperation = "source-over"
+
         ctx.text_settings["bold"] = "bold" if bold_input.getAttribute("aria-checked") == "true" else "normal"
         ctx.text_settings["italics"] = "italic" if italics_input.getAttribute("aria-checked") == "true" else "normal"
+
         ctx.text_settings["font-family"] = font_family_input.value
         # I know it's too long but it doesn't work otherwise
         ctx.font = f"{ctx.text_settings['italics']} {ctx.text_settings['bold']} {ctx.text_settings['size']}px {ctx.text_settings['font-family']}"  # noqa: E501
@@ -772,7 +965,6 @@ def type_change(event: Event) -> None:
 
     Args:
         event (Event): Change event
-
     """
     ctx.type = event.target.getAttribute("value")
     if ctx.type == "smooth":
@@ -798,7 +990,6 @@ def reset_board(_: Event) -> None:
 
     Args:
         _ (Event): Reset event
-
     """
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     save_history()
@@ -810,7 +1001,6 @@ def download_image(_: Event) -> None:
 
     Args:
         _ (Event): Click event
-
     """
     link = document.createElement("a")
     link.download = "download.webp"
@@ -825,7 +1015,6 @@ def upload_image(e: Event) -> None:
 
     Args:
         e (Event): Upload event
-
     """
     ctx.prev_operation = ctx.globalCompositeOperation
     ctx.globalCompositeOperation = "source-over"
@@ -842,15 +1031,15 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
         _ (Event): Resize event
         keep_content (bool): Flag to keep the existing content. It's technically not a dict. It's an Object,
                             but I can't type hint with it.
-
     """
     data = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
     line_width = ctx.lineWidth
     stroke_style = ctx.strokeStyle
     font = ctx.font
     global_composite_operation = ctx.globalCompositeOperation
-    display_height = window.innerHeight * 0.95
 
+    display_height = window.innerHeight * 0.95
     display_width = display_height * (2**0.5)
 
     canvas.style.height = f"{display_height}px"
@@ -898,11 +1087,11 @@ def resize(_: Event, keep_content: dict | bool = True) -> None:  # noqa: FBT001,
 
 @create_proxy
 def handle_scroll(e: Event) -> None:
-    """Handle scrolling on the canvas. Used to increase/decrease the size of images/text etc.
+    """Handle scrolling on the canvas. Used to increase/decrease the size of
+    images/text etc.
 
     Args:
         e (Event): Scroll event
-
     """
     e.preventDefault()
     x, y = get_canvas_coords(e)
@@ -950,24 +1139,26 @@ def keydown_event(event: KeyboardEvent) -> None:
 
     Args:
         event (KeyboardEvent): Keydown event
-
     """
     if event.key == "Backspace":
         if ctx.moving_image:
             ctx.moving_image = False
+
             ctx.globalCompositeOperation = ctx.prev_operation
             ctx.size_change = 0
         elif ctx.moving_clip:
             ctx.moving_clip = False
+
             ctx.setLineDash([])
-            buffer_ctx.setLineDash([])
             ctx.strokeStyle = ctx.prev_stroke_style
             ctx.lineWidth = ctx.prev_line_width
 
+            buffer_ctx.setLineDash([])
             buffer_ctx.strokeStyle = ctx.prev_stroke_style
             buffer_ctx.lineWidth = ctx.prev_line_width
         elif ctx.writing_text:
             ctx.writing_text = False
+
             ctx.text_placed = True
             ctx.globalCompositeOperation = ctx.prev_operation
         show_action_icon(ctx.current_position[0], ctx.current_position[1])
@@ -987,7 +1178,6 @@ def keyup_event(event: KeyboardEvent) -> None:
 
     Args:
         event (KeyboardEvent): Keyup event
-
     """
     if event.key == "Alt":
         ctx.is_rotating = False
@@ -998,11 +1188,13 @@ def load_image(event: Event = None) -> None:
     """Load image from the browser storage."""
     data_url = localStorage.getItem("cj12-hhh-image-data")
     drawing_mode = localStorage.getItem("cj12-hhh-drawing-mode")
+
     if data_url:
         if drawing_mode == "pixel":
             ctx.type = "pixel"
             ctx.imageSmoothingEnabled = False
             ctx.scaled_by = 0.5
+
         saved_canvas_data = Image.new()
         saved_canvas_data.src = data_url
         saved_canvas_data.addEventListener(
@@ -1011,10 +1203,14 @@ def load_image(event: Event = None) -> None:
                 lambda _: ctx.drawImage(saved_canvas_data, 0, 0, canvas.width, canvas.height),
             ),
         )
+
         if drawing_mode == "pixel":
             resize(event)
 
+    save_history()  # Save the starting image
 
+
+# Load image from storage
 if document.readyState == "loading":
     window.addEventListener("DOMContentLoaded", load_image)
 else:
@@ -1032,5 +1228,3 @@ document.addEventListener("keyup", keyup_event)
 # but the wheel event is not supported by Safari and Webviewer on iOS.
 canvas.addEventListener("wheel", handle_scroll)
 canvas.addEventListener("mousewheel", handle_scroll)
-
-save_history()

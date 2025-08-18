@@ -12,7 +12,6 @@ __all__ = [
     "get_gallery_room",
 ]
 
-# TODO: update url when ready
 NODE = tuple[bool, bool, bool, bool]
 MAP = list[list[NODE | None]]
 

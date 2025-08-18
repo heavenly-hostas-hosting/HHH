@@ -1,8 +1,17 @@
 
 #loading {
-	outline: none; border: none; background: transparent
+	outline: none;
+	border: none;
+	background: transparent;
 }
 
+#help-menu {
+	outline: 5px solid gray;
+	border: none;
+	background: white;
+	width: 50%;
+	box-shadow: 10cm;
+}
 
 #instructions {
 	position: absolute;
@@ -42,6 +51,23 @@
 	display: none;
 }
 
+li {
+	font-size: 24px;
+	line-height: 1.5;
+	margin-bottom: 8px;
+}
+
+button {
+	font-size: 16px;
+	line-height: 1.5;
+	margin-bottom: 8px;
+	padding: 12px 20px;
+	border: none;
+	border-radius: 8px;
+	background-color: #007bff;
+	color: white;
+	cursor: pointer;
+}
 
 body {
 	margin: 0;

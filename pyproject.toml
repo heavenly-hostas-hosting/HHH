@@ -7,7 +7,7 @@ authors = [
     { name = "HiPeople21", email = "hipeople3.14159@gmail.com" },
     { name = "Sergio Díaz-Esparza" },
     { name = "Alan Manning" },
-    { name = "Aadil Goyal" },
+    { name = "Aadil Goyal", email = "aadilgoyal1@gmail.com" },
 ]
 version = "0.1.0"
 readme = "README.md"
