@@ -182,8 +182,9 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                     ui.item("e: Select eraser (🧽) mode.")
                     ui.item("s: Select smudge (💨) mode.")
                     ui.item("c: Select clip (📎) mode.")
-                    ui.item("z: Spin a new colour.")
-                    ui.item("u: Undo.")
+                    ui.item("a: Spin a new colour.")
+                    ui.item("ctrl+z: Undo.")
+                    ui.item("ctrl+shift+z: Redo.")
                     ui.item("?: Show this help menu.")
                 ui.markdown(
                     """
@@ -526,7 +527,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                         colour_label = ui.label("00")
                         colour_values.append(colour_label)
 
-            ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,space'")
+            ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,a'")
 
             ui.separator().classes("w-full")
 
