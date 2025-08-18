@@ -12,7 +12,8 @@ SUPABASE_KEY = utils.assure_get_env("ANON_KEY")
 
 GITHUB_CALLBACK_REDIRECT_URI = utils.assure_get_env("GITHUB_CALLBACK_REDIRECT_URI")
 POST_AUTH_REDIRECT_URI = utils.assure_get_env("POST_AUTH_REDIRECT_URI")
-ADDITIONAL_REDIRECT_URLS = utils.assure_get_env("ADDITIONAL_REDIRECT_URLS").split(" ")
+# ADDITIONAL_REDIRECT_URLS = utils.assure_get_env("ADDITIONAL_REDIRECT_URLS").split(" ")
+CORS_ALLOW_ORIGINS = utils.assure_get_env("CORS_ALLOW_ORIGINS").split(" ")
 
 JWT_SECRET = utils.assure_get_env("JWT_SECRET")
 
