@@ -52,7 +52,7 @@ jobs:
             exit 0
           fi
 
-          commit_hash=${{ github.event.pull_request.base.sha }}
+          commit_hash=${{ github.event.pull_request.head.sha }}
           filename="$files"
 
           echo "Commit: $commit_hash"
