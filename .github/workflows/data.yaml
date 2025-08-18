@@ -1,0 +1,89 @@
+name: Validate and auto-handle PR
+
+on:
+  pull_request:
+    branches:
+      - data
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh jq
+          gh --version
+
+      - name: Check out PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate PR
+        id: validate
+        run: |
+          set -euo pipefail
+
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+
+          # ensure a single commit
+          commit_count=$(git rev-list --count origin/$BASE_BRANCH..HEAD)
+          if [ "$commit_count" -ne 1 ]; then
+            echo "::error::PR must contain exactly one commit"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # ensure a single file
+          files=$(git diff --name-only origin/$BASE_BRANCH..HEAD)
+          file_count=$(echo "$files" | wc -l)
+          if [ "$file_count" -ne 1 ]; then
+            echo "::error::PR must modify exactly one file"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          commit_hash=$(git rev-parse HEAD)
+          filename="$files"
+
+          echo "Commit: $commit_hash"
+          echo "File: $filename"
+
+          # ensure PR came from the backend
+          response=$(curl -s \
+            "https://cj12.matiiss.com/validate?filename=$filename&commit_hash=$commit_hash")
+
+          echo "Endpoint response: $response"
+
+          is_valid=$(echo "$response" | jq -r '.is_valid')
+
+          if [ "$is_valid" != "true" ]; then
+            echo "::error::Validation endpoint returned is_valid=$is_valid"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "valid=true" >> $GITHUB_OUTPUT
+          echo "commit_hash=$commit_hash" >> $GITHUB_OUTPUT
+          echo "filename=$filename" >> $GITHUB_OUTPUT
+
+      - name: Close PR if invalid
+        if: steps.validate.outputs.valid == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr close ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --comment "Validation failed, closing the PR"
+
+      - name: Merge PR if valid
+        if: steps.validate.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --auto \
+            --delete-branch \
+            --body "Validation successful, merging the PR"
