@@ -1,4 +1,3 @@
-## PLACEHOLDER, TAKEN FROM:			# think we can remove this now, basically deleted most of their code
 ## https:#pyscript.com/@examples/webgl-icosahedron/latest
 
 ## DOCS
@@ -320,7 +319,7 @@ async def check_collision_with_trigger(velocity: THREE.Vector3, delta_time: floa
         print("Entered trigger area")
         room = intersections[0].object.parent.parent
         print(room.name)
-        await updated_loaded_rooms(room)
+        asyncio.ensure_future(updated_loaded_rooms(room))
 
 
 # -------------------------------------- HELP MENU --------------------------------------
@@ -485,8 +484,7 @@ print("LAZY LOADING")
 async def load_room(room: THREE.Group) -> None:
     """Loads a room and/or makes it visible."""
     paintings = room.getObjectByName("Pictures")
-    print(room.name[5:])
-    print(any(p.name.startswith(f"picture_{room.name[5:]}") for p in PICTURES.children))
+    # print(any(p.name.startswith(f"picture_{room.name[5:]}") for p in PICTURES.children))
 
     if any(p.name.startswith(f"picture_{room.name[5:]}") for p in PICTURES.children):
         # Checks whther the room has any "photoframes" in it, if yes then it has been previously loaded and we just need to set it to be visible
@@ -503,13 +501,15 @@ async def load_room(room: THREE.Group) -> None:
                     load_image(slot)
                     print(f"loaded image {slot}")
 
+    print(f"{room.name} is now loaded")
+
 
 async def unload_room(room: THREE.Group) -> None:
     """Makes the paintings invisible"""
     for p in PICTURES.children:
         if p.name.startswith(f"picture_{room.name[5:]}"):
             p.visible = False
-            print(f"{p.name} now invisible")
+            # print(f"{p.name} now invisible")
 
     print(f"{room.name} is now unloaded")
 
@@ -518,8 +518,18 @@ async def updated_loaded_rooms(current_room: THREE.Group, r: int = 2) -> None:
     """Loads all rooms which are at some r distance from the current room"""
     print("Loading rooms...")
 
-    get_chunk_coords = lambda room: sum(int(i) for i in room.name.split("_")[1:])
-    calc = lambda room: abs(get_chunk_coords(current_room) - get_chunk_coords(room)) <= r
+    get_chunk_coords = lambda room: tuple(int(i) for i in room.name.split("_")[1:])
+    calc = (
+        lambda room: sum(
+            abs(i - j)
+            for i, j in zip(
+                get_chunk_coords(current_room),
+                get_chunk_coords(room),
+                strict=True,
+            )
+        )
+        <= r
+    )
 
     for room in ROOMS:
         if room in LOADED_ROOMS:
@@ -640,15 +650,19 @@ async def load_gallery() -> None:
         key=lambda p: abs(p[0]) + abs(p[1]),
     )
     await clone_rooms(layout_points, layout, apothem)
-    await load_images_from_listing()
-    await updated_loaded_rooms(SCENE.getObjectByName("room_0_0"))
 
 
 async def main():
+    print("Loading image listing...")
+    await load_images_from_listing()
+
     while not SCENE.getObjectByName("room_0_0"):
         print("Waiting for the initial room to load...")
         await asyncio.sleep(0.05)
     print("Initial room loaded")
+
+    print("Loading neighbors of first room...")
+    asyncio.ensure_future(updated_loaded_rooms(SCENE.getObjectByName("room_0_0")))
 
     clock = THREE.Clock.new()
     while True:
