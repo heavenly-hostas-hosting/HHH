@@ -85,7 +85,7 @@ async def commit_and_create_pull_request(
     file_path: str,
     file_content: bytes,
     pr_title: str,
-) -> Any:
+) -> str:
     root_auth_headers = {"Authorization": f"token {root_app_installation_token}"}
     auth_headers = {"Authorization": f"token {app_installation_token}"}
     meta_headers = {"Accept": "application/vnd.github+json"}
@@ -95,18 +95,18 @@ async def commit_and_create_pull_request(
 
     async with httpx.AsyncClient() as client:
         # Get SHA of the data branch to create a new branch off of in the fork
-        r = await client.get(
-            f"https://api.github.com/repos/{env.GIT_UPSTREAM_OWNER}/{fork_name}/git/refs/heads/{env.GIT_UPSTREAM_DATA_BRANCH}",
-            headers=headers,
-        )
-        r.raise_for_status()
-        base_sha = r.json()["object"]["sha"]
+        # r = await client.get(
+        #     f"https://api.github.com/repos/{env.GIT_UPSTREAM_OWNER}/{env.GIT_UPSTREAM_REPO}/git/refs/heads/{env.GIT_UPSTREAM_DATA_BRANCH}",
+        #     headers=headers,
+        # )
+        # r.raise_for_status()
+        # base_sha = r.json()["object"]["sha"]
 
         # Create a new branch in the fork
         r = await client.post(
             f"https://api.github.com/repos/{fork_owner}/{fork_name}/git/refs",
             headers=headers,
-            json={"ref": f"refs/heads/{new_branch}", "sha": base_sha},
+            json={"ref": f"refs/heads/{new_branch}", "sha": env.GIT_UPSTREAM_DATA_BRANCH_FIRST_COMMIT_HASH},
         )
         r.raise_for_status()
 
@@ -121,7 +121,7 @@ async def commit_and_create_pull_request(
             },
         )
         r.raise_for_status()
-        # commit_hash = r.json()["commit"]["sha"]
+        commit_hash: str = r.json()["commit"]["sha"]
 
         # Open PR against upstream
         r = await client.post(
@@ -136,3 +136,5 @@ async def commit_and_create_pull_request(
             },
         )
         r.raise_for_status()
+
+    return commit_hash

@@ -2,7 +2,7 @@
 from math import cos, pi, sin
 from typing import Literal
 
-from canvas_ctx import CanvasContext, ImageBitmap  # pyright: ignore[reportMissingImports] #
+from canvas_ctx import CanvasContext, ImageBitmap  # pyright: ignore[reportMissingImports]
 
 # Following imports have the ignore flag as they are not pip installed
 from js import (  # pyright: ignore[reportMissingImports]
