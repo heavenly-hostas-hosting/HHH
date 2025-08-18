@@ -6,6 +6,10 @@ on:
     branches:
       - data
 
+permissions:
+  pull-requests: write
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -48,7 +52,7 @@ jobs:
             exit 0
           fi
 
-          commit_hash=${{ github.event.pull_request.head.sha }}
+          commit_hash=${{ github.event.pull_request.base.sha }}
           filename="$files"
 
           echo "Commit: $commit_hash"
