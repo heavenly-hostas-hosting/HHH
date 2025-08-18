@@ -55,7 +55,7 @@ jobs:
 
           # ensure PR came from the backend
           response=$(curl -s \
-            "https://cj12.matiiss.com/validate?filename=$filename&commit_hash=$commit_hash")
+            "https://cj12.matiiss.com/api/verify_pr?filename=$filename&commit_hash=$commit_hash")
 
           echo "Endpoint response: $response"
 
