@@ -64,10 +64,9 @@ GALLERY_BLOCKS: dict[ROOM_TYPES, THREE.Group] = {}
 # Other global variables
 ROOMS: list[THREE.Group] = []  # a list of all rooms in the scene
 PAINTINGS: list[THREE.Object3D] = []  # a list of all the paintings in the scene
-CURRENT_ROOM: THREE.Group = None  # the room in which the player currently is
 
-OFFSET = 0.1  # distance which we maintain from walls
-TRIGGER_COLLISION = False  # whether we are currently colliding with a trigger
+# distance which we maintain from walls
+OFFSET = 0.2
 
 VELOCITY = THREE.Vector3.new()
 
@@ -273,19 +272,14 @@ def check_collision(velocity: THREE.Vector3, delta_time: float) -> bool:
     Checks for collision with walls (cubes) and triggers
     returns true if it is safe to move and false if movement should be stopped
     """
-    # print("Checking collision with walls and triggers...")
-    # print(CURRENT_ROOM)
     raycaster = THREE.Raycaster.new()
     direction = velocity.clone().normalize()
     raycaster.set(CAMERA.position, direction)
-
-    check_collision_with_trigger(velocity, delta_time, raycaster)
 
     return check_collision_with_wall(velocity, delta_time, raycaster)
 
 
 def check_collision_with_wall(velocity: THREE.Vector3, delta_time: float, raycaster: THREE.Raycaster) -> bool:
-    # print('walls', CURRENT_ROOM.name)
     cubes = []
     [cubes.extend(c.getObjectByName("Cubes").children) for c in ROOMS]
     intersections = raycaster.intersectObjects(cubes, recursive=True)
@@ -294,34 +288,35 @@ def check_collision_with_wall(velocity: THREE.Vector3, delta_time: float, raycas
     return intersections[0].distance > velocity.length() * delta_time + OFFSET
 
 
-def check_collision_with_trigger(velocity: THREE.Vector3, delta_time: float, raycaster: THREE.Raycaster):
-    global CURRENT_ROOM, TRIGGER_COLLISION
-    # print('trigger', CURRENT_ROOM.name)
-
-    triggers = []
-    [triggers.extend(c.getObjectByName("Triggers").children) for c in ROOMS]
-
-    intersections = raycaster.intersectObjects(triggers, recursive=True)
-    if intersections and intersections[0].distance <= velocity.length() * delta_time:
-        if not TRIGGER_COLLISION:
-            TRIGGER_COLLISION = True
-    else:
-        if TRIGGER_COLLISION:
-            TRIGGER_COLLISION = False
-            print("Exited trigger area")
-
-            calc = lambda x, y: (x - y / 2) // y
-
-            """
-            coords = get_chunk_coords()
-            CURRENT_ROOM = SCENE.getObjectByName(f"room_{int(coords[0])}_{int(coords[1])}")
-            print("UPDATED CURRENT ROOM", CURRENT_ROOM.name)
-            load_room()
-            """
-
-
 # -------------------------------------- ROOM CREATION --------------------------------------
 print("ROOM CREATION")
+
+
+def room_objects_handling(room: THREE.Group) -> None:
+    assert room.children[0].name.startswith("Cube")
+    room.children[0].name = "Cubes"
+    for v in room.children[0].children:
+        v.material.side = THREE.FrontSide
+
+    triggers = THREE.Group.new()
+    triggers.name = "Triggers"
+
+    pictures = THREE.Group.new()
+    pictures.name = "Pictures"
+
+    for v in room.children[1:]:
+        if v.name.startswith("trigger"):
+            room.remove(v)
+            triggers.add(v)
+            v.visible = False
+
+        if v.name.startswith("pic"):
+            room.remove(v)
+            pictures.add(v)
+            v.visible = False
+
+    room.add(triggers)
+    room.add(pictures)
 
 
 def load_image(image_loc: str, slot: int):
@@ -344,13 +339,11 @@ def load_image(image_loc: str, slot: int):
         geometry = THREE.PlaneGeometry.new(1, 1, 1)
         material = THREE.MeshBasicMaterial.new(perms)
         plane = THREE.Mesh.new(geometry, material)
-        plane.scale.x = 1.414  # as HiPeople said the aspect ratio is 1 : sqrt2
+        plane.scale.x = 1.414
 
         # Snap the plane to its slot
         (x, y, z), (nx, ny, nz), (w, h) = get_painting_info(PAINTINGS[slot])
-        plane.position.x = x
-        plane.position.y = y
-        plane.position.z = z
+        plane.position.set(x, y, z)
 
         q = THREE.Quaternion.new()
         q.setFromUnitVectors(THREE.Vector3.new(-1, 0, 0), THREE.Vector3.new(nx, ny, nz))
@@ -381,21 +374,17 @@ def create_room(
     room_apothem: float,
     room_type: ROOM_TYPES,
     rotation: float = 0,
-) -> THREE.Group:
+) -> None:
     """
     chunk_coords represent the coordinates of the room
+    room_apothem is the perp distance from the center of the room to its edges
+    room_type represents the type of the room
     rotation represents the rotation of the room, which is supposed to be multiples of pi/2
-    room_type represents the type of the room (TODO)
     """
 
     room = GALLERY_BLOCKS[room_type].clone()
-    # obj.visible = False
     room.name = f"room_{chunk_coords[0]}_{chunk_coords[1]}"
     ROOMS.append(room)
-
-    # print(f"Loading done! Here's its component structure:")
-    # print(tree_print(obj))
-    # print(f"Number of paintinyg slots:", len(picture_grp.children))
 
     position = (chunk_coords[0] * room_apothem * 2, 0, chunk_coords[1] * room_apothem * 2)
     room.rotation.y = rotation
@@ -403,11 +392,10 @@ def create_room(
 
     # Add its children to a global list of paintings
     for i in room.getObjectByName("Pictures").children:
+        i.name = f"pic_{len(PAINTINGS):03d}"
         PAINTINGS.append(i)
 
     SCENE.add(room)
-
-    return room
 
 
 async def clone_rooms(chunks: list[tuple[int, int]], layout: MAP, apothem: float):
@@ -452,57 +440,6 @@ def generate_global_lights():
     )
 
 
-# Too expensive!
-"""
-def generate_lights() -> THREE.Group:
-    # Simpler lighting to avoid crashes
-    lights = THREE.Group.new()
-    width, height = 1, 1
-    intensity = 400
-    light_main = THREE.RectAreaLight.new(0xFF_FF_FF, intensity, width, height)
-    light_main.position.set(0, 5.5, 0)
-    light_main.castShadow = False
-    # light_main.shadow.mapSize.width = 10000
-    # light_main.shadow.mapSize.height = light_main.shadow.mapSize.width
-    light_main.penumbra = 0.5
-    light_main.lookAt(0, 0, 0)
-
-    lights.add(light_main)
-
-    return lights
-"""
-
-
-def room_objects_handling(room: THREE.Group) -> None:
-    assert room.children[0].name.startswith("Cube")
-    room.children[0].name = "Cubes"
-    for v in room.children[0].children:
-        v.material.side = THREE.FrontSide
-
-    triggers = THREE.Group.new()
-    triggers.name = "Triggers"
-
-    pictures = THREE.Group.new()
-    pictures.name = "Pictures"
-
-    for v in room.children[1:]:
-        if v.name.startswith("trigger"):
-            room.remove(v)
-            triggers.add(v)
-            v.visible = False
-
-        if v.name.startswith("pic"):
-            room.remove(v)
-            pictures.add(v)
-            v.visible = False
-
-    room.add(triggers)
-    room.add(pictures)
-    # room.add(generate_lights()
-
-    return pictures
-
-
 async def load_gallery_blocks() -> None:
     loader = GLTFLoader.new()
 
@@ -536,6 +473,15 @@ async def load_gallery_blocks() -> None:
         )
 
     # Ensure they are loaded
+    while True:
+        for i in ROOM_TYPES:
+            if i not in GALLERY_BLOCKS:
+                await asyncio.sleep(0.02)
+                break
+        else:
+            break
+
+"""     # Ensure they are loaded
     all_loaded = False
     while not all_loaded:
         all_loaded = True
@@ -544,6 +490,7 @@ async def load_gallery_blocks() -> None:
                 all_loaded = False
                 await asyncio.sleep(0.02)
                 break
+ """
 
 
 def get_room_apothem() -> float:
@@ -578,32 +525,11 @@ async def load_gallery() -> None:
     await load_images_from_listing()
 
 
-""" def load_room(r: int = 3) -> None:
-    '''
-    Loads all rooms which are at r distance from the current room
-    '''
-    print("Loading rooms...")
-    for room in ROOMS:
-        if room not in LOADED_ROOMS:
-            if room.position.distanceTo(CAMERA.position) < r * ROOM_SIZE[0]:
-                room.visible = True
-                LOADED_ROOMS.append(room)
-                print(f"Room {room.name} loaded at position {room.position.toArray()}")
-            else:
-                print(f"Room {room.name} is too far away, not loading it.")
-    pass
- """
-
-
 async def main():
-    global CURRENT_ROOM
-
     while not SCENE.getObjectByName("room_0_0"):
         print("Waiting for the initial room to load...")
         await asyncio.sleep(0.05)
-
     print("Initial room loaded")
-    CURRENT_ROOM = SCENE.getObjectByName("room_0_0")
 
     clock = THREE.Clock.new()
     while True:

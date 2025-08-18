@@ -6,9 +6,6 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
 
-        <!-- PyScript CSS -->
-        <!-- <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css"> -->
-
         <!-- Script for Three js -->
         <script type="importmap">
         {
@@ -24,15 +21,11 @@
         <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
         <script type="module">
             import * as THREE from 'three';
-            import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
-			import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
             import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
             import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
             import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js'
 
             window.THREE = THREE;
-            window.LineSegments2 = LineSegments2;
-            window.LineMaterial = LineMaterial;
             window.GLTFLoader = GLTFLoader;
             window.RGBELoader = RGBELoader;
             window.PointerLockControls = PointerLockControls;
