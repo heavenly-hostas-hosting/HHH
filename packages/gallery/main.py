@@ -1,4 +1,3 @@
-## PLACEHOLDER, TAKEN FROM:			# think we can remove this now, basically deleted most of their code
 ## https:#pyscript.com/@examples/webgl-icosahedron/latest
 
 ## DOCS
@@ -36,6 +35,7 @@ from pyscript import document, when, window  # pyright: ignore[reportMissingImpo
 
 # -------------------------------------- GLOBAL VARIABLES --------------------------------------
 print("GLOBAL VARIABLES")
+USE_LOCALHOST = False
 
 # Renderer set up
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
@@ -61,20 +61,40 @@ SCENE.add(CAMERA)
 GALLERY_BLOCKS: dict[ROOM_TYPES, THREE.Group] = {}
 
 
+# Picture group to know which paintings have been loaded
+PICTURES: THREE.Group = THREE.Group.new()
+PICTURES.name = "Picture_group"
+SCENE.add(PICTURES)
+
+
 # Other global variables
 ROOMS: list[THREE.Group] = []  # a list of all rooms in the scene
 PAINTINGS: list[THREE.Object3D] = []  # a list of all the paintings in the scene
-CURRENT_ROOM: THREE.Group = None  # the room in which the player currently is
+LOADED_ROOMS: list[THREE.Group] = []  # a list of all the rooms that are currently loaded
+IMAGES_LIST: list[str] = []  # a list of the names of the paintings that have to be loaded in order
+LOADED_SLOTS: list[int] = []  # a list of all slots that have been loaded
 
-OFFSET = 0.1  # distance which we maintain from walls
-TRIGGER_COLLISION = False  # whether we are currently colliding with a trigger
+# Related to Moving
+RUN_STATE: bool = False  # to toggle running
+CAN_MOVE: bool = False  # so that the player cant move unless he is "locked in"
+
+# distance which we maintain from walls
+OFFSET = 0.2
 
 VELOCITY = THREE.Vector3.new()
 
-REPO_URL = (
-    r"https://cdn.jsdelivr.net/gh/"
-    r"heavenly-hostas-hosting/HHH@data/"
-)
+if USE_LOCALHOST:
+    REPO_URL = (
+        r"https://cdn.jsdelivr.net/gh/"
+        r"Matiiss/pydis-cj12-heavenly-hostas@dev/"
+        r"packages/gallery/assets/images/"
+    )
+else:
+    REPO_URL = (
+        r"https://cdn.jsdelivr.net/gh/"
+        r"heavenly-hostas-hosting/HHH@data/"
+    )
+
 
 # For Type Hinting
 V3 = tuple[float, float, float]
@@ -150,33 +170,35 @@ print("MOVEMENT CONTROLS")
 # Movement Controls
 INPUTS = Enum("INPUTS", ["FORW", "LEFT", "RIGHT", "BACK", "UP", "DOWN", "RUN"])
 KEY_MAPPINGS: dict[INPUTS, set[str]] = {
-    INPUTS.FORW: {"KeyW", "KeyK", "ArrowUp"},
-    INPUTS.LEFT: {"KeyH", "KeyA", "ArrowLeft"},
-    INPUTS.RIGHT: {"KeyL", "KeyD", "ArrowRight"},
-    INPUTS.BACK: {"KeyJ", "KeyS", "ArrowDown"},
+    INPUTS.FORW: {"KeyW", "ArrowUp"},
+    INPUTS.LEFT: {"KeyA", "ArrowLeft"},
+    INPUTS.BACK: {"KeyS", "ArrowDown"},
+    INPUTS.RIGHT: {"KeyD", "ArrowRight"},
     INPUTS.UP: {"Space"},
     INPUTS.DOWN: {"ShiftLeft", "ShiftRight"},
-    INPUTS.RUN: {"KeyZ"},
+    #
+    INPUTS.RUN: {"KeyZ", "ControlLeft", "ControlRight"},
 }
 KEY_STATES: dict[str, bool] = defaultdict(bool)
 document.addEventListener("keydown", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, True)))
 document.addEventListener("keyup", create_proxy(lambda x: KEY_STATES.__setitem__(x.code, False)))
-
-# Global variable to toggle running
-RUN_STATE = False
 
 
 def toggle_run(event):
     global RUN_STATE
     if event.code in KEY_MAPPINGS[INPUTS.RUN]:
         RUN_STATE = not RUN_STATE
+    if event.key == "h":
+        openHelpMenu()
 
 
 document.addEventListener("keydown", create_proxy(toggle_run))
 
 
 # Main move function
-def move_character(delta_time: float):
+def move_character(delta_time: float) -> THREE.Vector3:
+    if not CAN_MOVE:
+        return THREE.Vector3.new(0, 0, 0)
     pressed_keys = {k for k, v in KEY_MAPPINGS.items() if any(KEY_STATES[i] for i in v)}
     damping = 8
     if RUN_STATE:
@@ -228,29 +250,47 @@ print("MOUSE CONTROLS")
 
 MOUSE = THREE.Vector2.new()
 
+
+# Mouse Lock Functions
+def cam_lock(e):
+    global CAN_MOVE
+    setattr(
+        document.getElementById("instructions").style,
+        "display",
+        "none",
+    )
+    setattr(
+        document.getElementById("editor").style,
+        "display",
+        "none",
+    )
+
+    CAN_MOVE = True
+
+
+def cam_unlock(e):
+    global CAN_MOVE
+    setattr(
+        document.getElementById("instructions").style,
+        "display",
+        "block",
+    )
+    setattr(
+        document.getElementById("editor").style,
+        "display",
+        "block",
+    )
+    CAN_MOVE = False
+
+
 # Mouse Lock
 CONTROLS = PointerLockControls.new(CAMERA, document.body)
 document.getElementById("instructions").addEventListener("click", create_proxy(CONTROLS.lock))
 CONTROLS.addEventListener(
     "lock",
-    create_proxy(
-        lambda x: setattr(
-            document.getElementById("instructions").style,
-            "display",
-            "none",
-        ),
-    ),
+    create_proxy(cam_lock),
 )
-CONTROLS.addEventListener(
-    "unlock",
-    create_proxy(
-        lambda x: setattr(
-            document.getElementById("instructions").style,
-            "display",
-            "block",
-        ),
-    ),
-)
+CONTROLS.addEventListener("unlock", create_proxy(cam_unlock))
 
 
 # Mouse Controls
@@ -265,24 +305,21 @@ def onMouseMove(event):
 print("COLLISION DETECTION")
 
 
-def check_collision(velocity: THREE.Vector3, delta_time: float) -> bool:
+async def check_collision(velocity: THREE.Vector3, delta_time: float) -> bool:
     """
     Checks for collision with walls (cubes) and triggers
     returns true if it is safe to move and false if movement should be stopped
     """
-    # print("Checking collision with walls and triggers...")
-    # print(CURRENT_ROOM)
     raycaster = THREE.Raycaster.new()
     direction = velocity.clone().normalize()
     raycaster.set(CAMERA.position, direction)
 
-    check_collision_with_trigger(velocity, delta_time, raycaster)
+    await check_collision_with_trigger(velocity, delta_time, raycaster)
 
     return check_collision_with_wall(velocity, delta_time, raycaster)
 
 
 def check_collision_with_wall(velocity: THREE.Vector3, delta_time: float, raycaster: THREE.Raycaster) -> bool:
-    # print('walls', CURRENT_ROOM.name)
     cubes = []
     [cubes.extend(c.getObjectByName("Cubes").children) for c in ROOMS]
     intersections = raycaster.intersectObjects(cubes, recursive=True)
@@ -291,43 +328,87 @@ def check_collision_with_wall(velocity: THREE.Vector3, delta_time: float, raycas
     return intersections[0].distance > velocity.length() * delta_time + OFFSET
 
 
-def check_collision_with_trigger(velocity: THREE.Vector3, delta_time: float, raycaster: THREE.Raycaster):
-    global CURRENT_ROOM, TRIGGER_COLLISION
-    # print('trigger', CURRENT_ROOM.name)
-
+async def check_collision_with_trigger(velocity: THREE.Vector3, delta_time: float, raycaster: THREE.Raycaster):
     triggers = []
     [triggers.extend(c.getObjectByName("Triggers").children) for c in ROOMS]
 
     intersections = raycaster.intersectObjects(triggers, recursive=True)
     if intersections and intersections[0].distance <= velocity.length() * delta_time:
-        if not TRIGGER_COLLISION:
-            TRIGGER_COLLISION = True
-    else:
-        if TRIGGER_COLLISION:
-            TRIGGER_COLLISION = False
-            print("Exited trigger area")
+        print("Entered trigger area")
+        room = intersections[0].object.parent.parent
+        print(room.name)
+        asyncio.ensure_future(updated_loaded_rooms(room))
 
-            calc = lambda x, y: (x - y / 2) // y
 
-            """
-            coords = get_chunk_coords()
-            CURRENT_ROOM = SCENE.getObjectByName(f"room_{int(coords[0])}_{int(coords[1])}")
-            print("UPDATED CURRENT ROOM", CURRENT_ROOM.name)
-            load_room()
-            """
+# -------------------------------------- HELP MENU --------------------------------------
+print("HELP MENU")
+
+
+def closeHelpMenu(e=None):
+    help_menu = document.getElementById("help-menu")
+    help_menu.close()
+
+    instructions = document.getElementById("instructions")
+    instructions.style.display = "block"
+
+
+def openHelpMenu(e=None):
+    CONTROLS.unlock()
+
+    help_menu = document.getElementById("help-menu")
+    help_menu.showModal()
+
+    instructions = document.getElementById("instructions")
+    instructions.style.display = "none"
+
+
+document.getElementById("close-help-menu").addEventListener("click", create_proxy(closeHelpMenu))
 
 
 # -------------------------------------- ROOM CREATION --------------------------------------
 print("ROOM CREATION")
 
 
-def load_image(image_loc: str, slot: int):
+def room_objects_handling(room: THREE.Group) -> None:
+    assert room.children[0].name.startswith("Cube")
+    room.children[0].name = "Cubes"
+    for v in room.children[0].children:
+        v.material.side = THREE.FrontSide
+
+    triggers = THREE.Group.new()
+    triggers.name = "Triggers"
+
+    pictures = THREE.Group.new()
+    pictures.name = "Pictures"
+
+    for v in room.children[1:]:
+        if v.name.startswith("trigger"):
+            room.remove(v)
+            triggers.add(v)
+            v.visible = False
+
+        if v.name.startswith("pic"):
+            room.remove(v)
+            pictures.add(v)
+            v.visible = False
+
+    room.add(triggers)
+    room.add(pictures)
+
+
+def load_image(slot: int):
+    print(f"loading picture: {slot}")
     if slot >= len(PAINTINGS):
         warnings.warn(
             f"WARNING: slot to be accessed '{slot}' is greater than the maximum available "
             f"one '{len(PAINTINGS) - 1}'. The image will not be loaded."
         )
 
+    if slot >= len(IMAGES_LIST):
+        # this slot does not have a corresponding painting yet
+        return
+
+    image_loc = IMAGES_LIST[slot]
     textureLoader = THREE.TextureLoader.new()
 
     def inner_loader(loaded_obj):
@@ -341,21 +422,20 @@ def load_image(image_loc: str, slot: int):
         geometry = THREE.PlaneGeometry.new(1, 1, 1)
         material = THREE.MeshBasicMaterial.new(perms)
         plane = THREE.Mesh.new(geometry, material)
-        plane.scale.x = 1.414  # as HiPeople said the aspect ratio is 1 : sqrt2
+        plane.scale.x = 1.414
 
         # Snap the plane to its slot
         (x, y, z), (nx, ny, nz), (w, h) = get_painting_info(PAINTINGS[slot])
-        plane.position.x = x
-        plane.position.y = y
-        plane.position.z = z
+        plane.position.set(x, y, z)
 
         q = THREE.Quaternion.new()
         q.setFromUnitVectors(THREE.Vector3.new(-1, 0, 0), THREE.Vector3.new(nx, ny, nz))
         plane.quaternion.copy(q)
 
         # Add the plane to the scene
-        plane.name = f"picture_{slot:03d}"
-        SCENE.add(plane)
+        plane.name = f"picture_{PAINTINGS[slot].parent.parent.name[5:]}_{slot:03d}"
+        PICTURES.add(plane)
+        LOADED_SLOTS.append(slot)
 
     try:
         textureLoader.load(
@@ -369,14 +449,18 @@ def load_image(image_loc: str, slot: int):
 
 
 async def load_images_from_listing() -> None:
-    # r = await pyfetch(REPO_URL + "../" + "test-image-listing.json")
-    # r = await pyfetch("./assets/test-image-listing.json")
-    r = await pyfetch("https://cj12.matiiss.com/api/artworks")
+    if USE_LOCALHOST:
+        r = await pyfetch("./assets/test-image-listing.json")
+    else:
+        r = await pyfetch("https://cj12.matiiss.com/api/artworks")
     data = await r.text()
-    response_json = json.loads(data)
+    for username, img in json.loads(data)["artworks"]:
+        IMAGES_LIST.append(img)
 
-    for idx, (username, img) in enumerate(response_json["artworks"]):
-        load_image(img, idx)
+    print(f"Images to be loaded: {len(IMAGES_LIST)}")
+
+    # for idx, (username, img) in enumerate(json.loads(data)["artworks"]):
+    #    load_image(img, idx)
 
 
 def create_room(
@@ -384,21 +468,17 @@ def create_room(
     room_apothem: float,
     room_type: ROOM_TYPES,
     rotation: float = 0,
-) -> THREE.Group:
+) -> None:
     """
     chunk_coords represent the coordinates of the room
+    room_apothem is the perp distance from the center of the room to its edges
+    room_type represents the type of the room
     rotation represents the rotation of the room, which is supposed to be multiples of pi/2
-    room_type represents the type of the room (TODO)
     """
 
     room = GALLERY_BLOCKS[room_type].clone()
-    # obj.visible = False
     room.name = f"room_{chunk_coords[0]}_{chunk_coords[1]}"
     ROOMS.append(room)
-
-    # print(f"Loading done! Here's its component structure:")
-    # print(tree_print(obj))
-    # print(f"Number of paintinyg slots:", len(picture_grp.children))
 
     position = (chunk_coords[0] * room_apothem * 2, 0, chunk_coords[1] * room_apothem * 2)
     room.rotation.y = rotation
@@ -406,11 +486,11 @@ def create_room(
 
     # Add its children to a global list of paintings
     for i in room.getObjectByName("Pictures").children:
+        i.name = f"pic_{len(PAINTINGS):03d}"
         PAINTINGS.append(i)
 
     SCENE.add(room)
-
-    return room
+    print(f"created {room.name}, painting number now at {len(PAINTINGS)}")
 
 
 async def clone_rooms(chunks: list[tuple[int, int]], layout: MAP, apothem: float):
@@ -418,6 +498,73 @@ async def clone_rooms(chunks: list[tuple[int, int]], layout: MAP, apothem: float
         room, rotation = get_gallery_room(x, y, layout)
         create_room((x, y), apothem, room, rotation)
         # print(f"Generated ({x}, {y})")
+
+
+# -------------------------------------- LAZY LOADING --------------------------------------
+print("LAZY LOADING")
+
+
+async def load_room(room: THREE.Group) -> None:
+    """Loads a room and/or makes it visible."""
+    paintings = room.getObjectByName("Pictures")
+    # print(any(p.name.startswith(f"picture_{room.name[5:]}") for p in PICTURES.children))
+
+    if any(p.name.startswith(f"picture_{room.name[5:]}") for p in PICTURES.children):
+        # Checks whther the room has any "photoframes" in it, if yes then it has been previously loaded and we just need to set it to be visible
+
+        for p in PICTURES.children:
+            if p.name.startswith(f"picture_{room.name[5:]}"):
+                p.visible = True
+    else:
+        # This is the first time we are loading this room so we need to load its paintings too
+        for p in paintings.children:
+            if p.name.startswith("pic_"):
+                slot = int(p.name.split("_")[1])
+                if slot < len(IMAGES_LIST):
+                    load_image(slot)
+                    print(f"loaded image {slot}")
+
+    print(f"{room.name} is now loaded")
+
+
+async def unload_room(room: THREE.Group) -> None:
+    """Makes the paintings invisible"""
+    for p in PICTURES.children:
+        if p.name.startswith(f"picture_{room.name[5:]}"):
+            p.visible = False
+            # print(f"{p.name} now invisible")
+
+    print(f"{room.name} is now unloaded")
+
+
+async def updated_loaded_rooms(current_room: THREE.Group, r: int = 2) -> None:
+    """Loads all rooms which are at some r distance from the current room"""
+    print("Loading rooms...")
+
+    get_chunk_coords = lambda room: tuple(int(i) for i in room.name.split("_")[1:])
+    calc = (
+        lambda room: sum(
+            abs(i - j)
+            for i, j in zip(
+                get_chunk_coords(current_room),
+                get_chunk_coords(room),
+                strict=True,
+            )
+        )
+        <= r
+    )
+
+    for room in ROOMS:
+        if room in LOADED_ROOMS:
+            if not calc(room):
+                await unload_room(room)
+                LOADED_ROOMS.remove(room)
+        else:
+            if calc(room):
+                await load_room(room)
+                LOADED_ROOMS.append(room)
+
+    print("updated_loaded_rooms finished")
 
 
 # -------------------------------------- GALLERY LOADING --------------------------------------
@@ -455,57 +602,6 @@ def generate_global_lights():
     )
 
 
-# Too expensive!
-"""
-def generate_lights() -> THREE.Group:
-    # Simpler lighting to avoid crashes
-    lights = THREE.Group.new()
-    width, height = 1, 1
-    intensity = 400
-    light_main = THREE.RectAreaLight.new(0xFF_FF_FF, intensity, width, height)
-    light_main.position.set(0, 5.5, 0)
-    light_main.castShadow = False
-    # light_main.shadow.mapSize.width = 10000
-    # light_main.shadow.mapSize.height = light_main.shadow.mapSize.width
-    light_main.penumbra = 0.5
-    light_main.lookAt(0, 0, 0)
-
-    lights.add(light_main)
-
-    return lights
-"""
-
-
-def room_objects_handling(room: THREE.Group) -> None:
-    assert room.children[0].name.startswith("Cube")
-    room.children[0].name = "Cubes"
-    for v in room.children[0].children:
-        v.material.side = THREE.FrontSide
-
-    triggers = THREE.Group.new()
-    triggers.name = "Triggers"
-
-    pictures = THREE.Group.new()
-    pictures.name = "Pictures"
-
-    for v in room.children[1:]:
-        if v.name.startswith("trigger"):
-            room.remove(v)
-            triggers.add(v)
-            v.visible = False
-
-        if v.name.startswith("pic"):
-            room.remove(v)
-            pictures.add(v)
-            v.visible = False
-
-    room.add(triggers)
-    room.add(pictures)
-    # room.add(generate_lights()
-
-    return pictures
-
-
 async def load_gallery_blocks() -> None:
     loader = GLTFLoader.new()
 
@@ -539,14 +635,13 @@ async def load_gallery_blocks() -> None:
         )
 
     # Ensure they are loaded
-    all_loaded = False
-    while not all_loaded:
-        all_loaded = True
+    while True:
         for i in ROOM_TYPES:
             if i not in GALLERY_BLOCKS:
-                all_loaded = False
                 await asyncio.sleep(0.02)
                 break
+        else:
+            break
 
 
 def get_room_apothem() -> float:
@@ -578,41 +673,27 @@ async def load_gallery() -> None:
         key=lambda p: abs(p[0]) + abs(p[1]),
     )
     await clone_rooms(layout_points, layout, apothem)
-    await load_images_from_listing()
-
-
-""" def load_room(r: int = 3) -> None:
-    '''
-    Loads all rooms which are at r distance from the current room
-    '''
-    print("Loading rooms...")
-    for room in ROOMS:
-        if room not in LOADED_ROOMS:
-            if room.position.distanceTo(CAMERA.position) < r * ROOM_SIZE[0]:
-                room.visible = True
-                LOADED_ROOMS.append(room)
-                print(f"Room {room.name} loaded at position {room.position.toArray()}")
-            else:
-                print(f"Room {room.name} is too far away, not loading it.")
-    pass
- """
 
 
 async def main():
-    global CURRENT_ROOM
+    print("Loading image listing...")
+    await load_images_from_listing()
 
     while not SCENE.getObjectByName("room_0_0"):
         print("Waiting for the initial room to load...")
         await asyncio.sleep(0.05)
-
     print("Initial room loaded")
-    CURRENT_ROOM = SCENE.getObjectByName("room_0_0")
+
+    print("Loading neighbors of first room...")
+    asyncio.ensure_future(updated_loaded_rooms(SCENE.getObjectByName("room_0_0")))
 
     clock = THREE.Clock.new()
     while True:
         delta = clock.getDelta()
         velocity = move_character(delta)
-        if check_collision(velocity, delta):
+        if velocity == THREE.Vector3.new(0, 0, 0):
+            continue
+        if await check_collision(velocity, delta):
             CAMERA.position.addScaledVector(velocity, delta)
 
         RENDERER.render(SCENE, CAMERA)
