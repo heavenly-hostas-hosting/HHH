@@ -312,15 +312,15 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         """Fetch the API and login."""
         ui.notify("Logging in...")
         try:
-            await ui.run_javascript(
-                """
-                const redirectUrl = "/api/login";
-                window.location.href = redirectUrl;
+            # await ui.run_javascript(
+            #     """
+            #     const redirectUrl = "/api/login";
+            #     window.location.href = redirectUrl;
 
-                sessionStorage.setItem("cj12-hhh-logged-in", "true");
-                """,
-                timeout=60,
-            )
+            #     sessionStorage.setItem("cj12-hhh-logged-in", "true");
+            #     """,
+            #     timeout=60,
+            # )
 
             ui.notify("Logged in successfully!", type="positive")
 
@@ -337,15 +337,15 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         """Fetch the API and logout."""
         ui.notify("Logging out...")
         try:
-            await ui.run_javascript(
-                """
-                const redirectUrl = "/api/logout";
-                window.location.href = redirectUrl;
+            # await ui.run_javascript(
+            #     """
+            #     const redirectUrl = "/api/logout";
+            #     window.location.href = redirectUrl;
 
-                sessionStorage.setItem("cj12-hhh-logged-in", "false");
-                """,
-                timeout=60,
-            )
+            #     sessionStorage.setItem("cj12-hhh-logged-in", "false");
+            #     """,
+            #     timeout=60,
+            # )
 
             ui.notify("Logged out successfully!", type="positive")
 
@@ -360,21 +360,21 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
     async def check_login_status() -> None:
         try:
-            response = await ui.run_javascript(
-                """
-                response = await fetch(
-                    "/api/status",
-                    { method: "GET" },
-                ).catch((e) => console.error(e));
+            response = {"logged_in": True, "username": "me"}  # = await ui.run_javascript(
+            #     """
+            #     response = await fetch(
+            #         "/api/status",
+            #         { method: "GET" },
+            #     ).catch((e) => console.error(e));
 
-                response_json = response.json();
+            #     response_json = response.json();
 
-                sessionStorage.setItem("cj12-hhh-logged-in", response_json['logged_in']);
+            #     sessionStorage.setItem("cj12-hhh-logged-in", response_json['logged_in']);
 
-                return response_json;
-                """,
-                timeout=60,
-            )
+            #     return response_json;
+            #     """,
+            #     timeout=60,
+            # )
 
             # if not response.ok:
             #     ui.notify("Failed to check status!", type="negative")
@@ -398,6 +398,20 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
         except Exception as e:
             ui.notify(f"An error occurred: {e}", type="negative")
+
+    def show_publish_confirmation() -> None:
+        with ui.dialog() as dialog, ui.card():
+            with ui.card_section(), ui.column():
+                ui.label("Are you sure you want to publish your creation?").style("text-align: center;")
+                ui.label("You can only upload 5 images an hour.").style("text-align: center; margin: auto;")
+                ui.space()
+                with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
+                    ui.button("Cancel", on_click=dialog.close)
+                    ui.button(
+                        "Publish",
+                        on_click=lambda: (dialog.close(), publish()),
+                    )
+        dialog.open()
 
     ui.add_head_html("""
         <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
@@ -468,7 +482,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 register_button = ui.button("Register", on_click=show_registration_menu)
                 login_button = ui.button("Login", on_click=login)
             with ui.row().props("id='hidden-buttons'").style("display: none") as hidden_buttons:
-                publish_button = ui.button("Publish", on_click=publish)
+                publish_button = ui.button("Publish", on_click=show_publish_confirmation)
                 logout_button = ui.button("Logout", on_click=logout)
 
         with ui.element("div").style("position: relative;"):
