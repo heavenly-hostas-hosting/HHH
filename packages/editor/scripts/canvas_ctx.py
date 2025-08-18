@@ -60,7 +60,7 @@ class CanvasContext:
     # Custom attributes
     scaled_by: float = 2  # Better resolution
     drawing: bool = False
-    action: Literal["pen", "eraser", "smudge"] = "pen"
+    action: Literal["pen", "eraser", "smudge", "rectangle", "triangle", "star"] = "pen"
     type: Literal["smooth", "pixel"] = "smooth"
     current_img: Any
     bounding_rect: Any
@@ -112,6 +112,7 @@ class CanvasContext:
     rotation: float
     is_rotating: bool
     current_position: list[float]
+    drawing_shape: bool
 
     # Builtin attributes
     canvas: Any
@@ -247,9 +248,9 @@ class CanvasContext:
         """Add beginPath."""
         self.ctx.beginPath()
 
-    def bezierCurveTo(self) -> None:  # noqa: N802
+    def bezierCurveTo(self, cp1x: float, cp1y: float, cp2x: float, cp2y: float, x: float, y: float) -> None:  # noqa: N802
         """Add bezierCurveTo."""
-        self.ctx.bezierCurveTo()
+        self.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y)
 
     def clearRect(self, x: float, y: float, width: float, height: float) -> None:  # noqa: N802
         """Add clearRect."""
@@ -444,9 +445,9 @@ class CanvasContext:
         """Add rotate."""
         self.ctx.rotate(angle)
 
-    def roundRect(self) -> None:  # noqa: N802
+    def roundRect(self, x: float, y: float, width: float, height: float, radii: list[float]) -> None:  # noqa: N802
         """Add roundRect."""
-        self.ctx.roundRect()
+        self.ctx.roundRect(x, y, width, height, radii)
 
     def save(self) -> None:
         """Add save."""

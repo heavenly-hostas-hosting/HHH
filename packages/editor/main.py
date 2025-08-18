@@ -12,7 +12,17 @@ SPIN_COUNT = 10
 HEX = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"]
 
 
-action_options = {"pen": "🖊️", "eraser": "🧽", "smudge": "💨", "clip": "📎"}
+action_options = {
+    "pen": "🖊️",
+    "eraser": "🧽",
+    "smudge": "💨",
+    "clip": "📎",
+    "circle": "🟢",
+    "rectangle": "🟪",
+    "triangle": "🔺",
+    "star": "⭐",
+    "python": "🐍",
+}
 # I really don't want to do this but I don't know how else to achieve it
 global_vars = {
     "type_programatically_changed": False,
@@ -147,9 +157,9 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
     def switch_action(e: ValueChangeEventArguments) -> None:
         """Fire switch action event."""
-        if type_toggle.value == "pixel" and e.value in ("smudge", "clip"):
+        if type_toggle.value == "pixel" and e.value not in ("pen", "eraser"):
             action_toggle.value = "pen"
-            ui.notify("You cannot select the smudge or select action while in pixel mode.", type="negative")
+            ui.notify("You can only select the pen or erase action while in pixel mode.", type="negative")
             return
         ui.run_javascript(f"""
             const event = new Event('change');
@@ -475,12 +485,16 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 ui.button("Undo").props("id='undo-button' class='keyboard-shortcuts' shortcut_data='btn,u'")
                 ui.button("Redo").props("id='redo-button' class='keyboard-shortcuts' shortcut_data='btn,r'")
 
-            action_toggle = ui.toggle(
-                action_options,
-                value="pen",
-                on_change=switch_action,
-            ).props(
-                "id='action-select' class='keyboard-shortcuts' shortcut_data='toggle,p:🖊️,e:🧽,s:💨,c:📎'",
+            action_toggle = (
+                ui.toggle(
+                    action_options,
+                    value="pen",
+                    on_change=switch_action,
+                )
+                .props(
+                    "id='action-select' class='keyboard-shortcuts' shortcut_data='toggle,p:🖊️,e:🧽,s:💨,c:📎'",
+                )
+                .style("flex-wrap: wrap;")
             )
             ui.separator().classes("w-full")
             with ui.row():
