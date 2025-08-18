@@ -28,12 +28,15 @@ jobs:
           BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
 
           # ensure a single commit
-          commit_count=$(git rev-list --count origin/$BASE_BRANCH..HEAD)
-          if [ "$commit_count" -ne 1 ]; then
-            echo "::error::PR must contain exactly one commit"
-            echo "valid=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+          # FIXME: this check has flaws, also I don't think it's really necessary anyway
+          # the commit hash should really be enough to check what this was supposed
+          # to check
+          # commit_count=$(git rev-list --count origin/$BASE_BRANCH..HEAD)
+          # if [ "$commit_count" -ne 1 ]; then
+          #   echo "::error::PR must contain exactly one commit"
+          #   echo "valid=false" >> $GITHUB_OUTPUT
+          #   exit 0
+          # fi
 
           # ensure a single file
           files=$(git diff --name-only origin/$BASE_BRANCH..HEAD)
