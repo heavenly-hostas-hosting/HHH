@@ -35,6 +35,7 @@ from pyscript import document, when, window  # pyright: ignore[reportMissingImpo
 
 # -------------------------------------- GLOBAL VARIABLES --------------------------------------
 print("GLOBAL VARIABLES")
+USE_LOCALHOST = False
 
 # Renderer set up
 RENDERER = THREE.WebGLRenderer.new({"antialias": False})
@@ -82,10 +83,18 @@ OFFSET = 0.2
 
 VELOCITY = THREE.Vector3.new()
 
-REPO_URL = (
-    r"https://cdn.jsdelivr.net/gh/"
-    r"heavenly-hostas-hosting/HHH@data/"
-)
+if USE_LOCALHOST:
+    REPO_URL = (
+        r"https://cdn.jsdelivr.net/gh/"
+        r"Matiiss/pydis-cj12-heavenly-hostas@dev/"
+        r"packages/gallery/assets/images/"
+    )
+else:
+    REPO_URL = (
+        r"https://cdn.jsdelivr.net/gh/"
+        r"heavenly-hostas-hosting/HHH@data/"
+    )
+
 
 # For Type Hinting
 V3 = tuple[float, float, float]
@@ -161,10 +170,10 @@ print("MOVEMENT CONTROLS")
 # Movement Controls
 INPUTS = Enum("INPUTS", ["FORW", "LEFT", "RIGHT", "BACK", "UP", "DOWN", "RUN"])
 KEY_MAPPINGS: dict[INPUTS, set[str]] = {
-    INPUTS.FORW: {"KeyW", "KeyK", "ArrowUp"},
-    INPUTS.LEFT: {"KeyH", "KeyA", "ArrowLeft"},
-    INPUTS.RIGHT: {"KeyL", "KeyD", "ArrowRight"},
-    INPUTS.BACK: {"KeyJ", "KeyS", "ArrowDown"},
+    INPUTS.FORW: {"KeyW", "ArrowUp"},
+    INPUTS.LEFT: {"KeyA", "ArrowLeft"},
+    INPUTS.BACK: {"KeyS", "ArrowDown"},
+    INPUTS.RIGHT: {"KeyD", "ArrowRight"},
     INPUTS.UP: {"Space"},
     INPUTS.DOWN: {"ShiftLeft", "ShiftRight"},
     #
@@ -250,6 +259,12 @@ def cam_lock(e):
         "display",
         "none",
     )
+    setattr(
+        document.getElementById("editor").style,
+        "display",
+        "none",
+    )
+
     CAN_MOVE = True
 
 
@@ -257,6 +272,11 @@ def cam_unlock(e):
     global CAN_MOVE
     setattr(
         document.getElementById("instructions").style,
+        "display",
+        "block",
+    )
+    setattr(
+        document.getElementById("editor").style,
         "display",
         "block",
     )
@@ -429,9 +449,10 @@ def load_image(slot: int):
 
 
 async def load_images_from_listing() -> None:
-    # r = await pyfetch(REPO_URL + "../" + "test-image-listing.json")
-    # r = await pyfetch("./assets/test-image-listing.json")
-    r = await pyfetch("https://cj12.matiiss.com/api/artworks")
+    if USE_LOCALHOST:
+        r = await pyfetch("./assets/test-image-listing.json")
+    else:
+        r = await pyfetch("https://cj12.matiiss.com/api/artworks")
     data = await r.text()
     for username, img in json.loads(data)["artworks"]:
         IMAGES_LIST.append(img)
