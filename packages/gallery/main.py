@@ -61,9 +61,18 @@ SCENE.add(CAMERA)
 GALLERY_BLOCKS: dict[ROOM_TYPES, THREE.Group] = {}
 
 
+# Picture group to know which paintings have been loaded
+PICTURES: THREE.Group = THREE.Group.new()
+PICTURES.name = "Picture_group"
+SCENE.add(PICTURES)
+
+
 # Other global variables
 ROOMS: list[THREE.Group] = []  # a list of all rooms in the scene
 PAINTINGS: list[THREE.Object3D] = []  # a list of all the paintings in the scene
+LOADED_ROOMS: list[THREE.Group] = []  # a list of all the rooms that are currently loaded
+IMAGES_LIST: list[str] = []  # a list of the names of the paintings that have to be loaded in order
+LOADED_SLOTS: list[int] = []  # a list of all slots that have been loaded
 
 # Related to Moving
 RUN_STATE: bool = False  # to toggle running
@@ -278,7 +287,7 @@ def onMouseMove(event):
 print("COLLISION DETECTION")
 
 
-def check_collision(velocity: THREE.Vector3, delta_time: float) -> bool:
+async def check_collision(velocity: THREE.Vector3, delta_time: float) -> bool:
     """
     Checks for collision with walls (cubes) and triggers
     returns true if it is safe to move and false if movement should be stopped
@@ -286,6 +295,8 @@ def check_collision(velocity: THREE.Vector3, delta_time: float) -> bool:
     raycaster = THREE.Raycaster.new()
     direction = velocity.clone().normalize()
     raycaster.set(CAMERA.position, direction)
+
+    await check_collision_with_trigger(velocity, delta_time, raycaster)
 
     return check_collision_with_wall(velocity, delta_time, raycaster)
 
@@ -297,6 +308,18 @@ def check_collision_with_wall(velocity: THREE.Vector3, delta_time: float, raycas
     if not intersections:
         return True
     return intersections[0].distance > velocity.length() * delta_time + OFFSET
+
+
+async def check_collision_with_trigger(velocity: THREE.Vector3, delta_time: float, raycaster: THREE.Raycaster):
+    triggers = []
+    [triggers.extend(c.getObjectByName("Triggers").children) for c in ROOMS]
+
+    intersections = raycaster.intersectObjects(triggers, recursive=True)
+    if intersections and intersections[0].distance <= velocity.length() * delta_time:
+        print("Entered trigger area")
+        room = intersections[0].object.parent.parent
+        print(room.name)
+        await updated_loaded_rooms(room)
 
 
 # -------------------------------------- HELP MENU --------------------------------------
@@ -352,13 +375,19 @@ def room_objects_handling(room: THREE.Group) -> None:
     room.add(pictures)
 
 
-def load_image(image_loc: str, slot: int):
+def load_image(slot: int):
+    print(f'loading picture: {slot}')
     if slot >= len(PAINTINGS):
         warnings.warn(
             f"WARNING: slot to be accessed '{slot}' is greater than the maximum available "
             f"one '{len(PAINTINGS) - 1}'. The image will not be loaded."
         )
 
+    if slot >= len(IMAGES_LIST):
+        # this slot does not have a corresponding painting yet
+        return
+
+    image_loc = IMAGES_LIST[slot]
     textureLoader = THREE.TextureLoader.new()
 
     def inner_loader(loaded_obj):
@@ -383,8 +412,9 @@ def load_image(image_loc: str, slot: int):
         plane.quaternion.copy(q)
 
         # Add the plane to the scene
-        plane.name = f"picture_{slot:03d}"
-        SCENE.add(plane)
+        plane.name = f"picture_{PAINTINGS[slot].parent.parent.name[5:]}_{slot:03d}"
+        PICTURES.add(plane)
+        LOADED_SLOTS.append(slot)
 
     textureLoader.load(
         REPO_URL + image_loc,
@@ -396,10 +426,15 @@ async def load_images_from_listing() -> None:
     # r = await pyfetch(REPO_URL + "../" + "test-image-listing.json")
     r = await pyfetch("./assets/test-image-listing.json")
     data = await r.text()
-    images = json.loads(data)
 
-    for idx, img in enumerate(images):
-        load_image(img, idx)
+    IMAGES_LIST.extend(json.loads(data))
+    # IMAGES_LIST.extend(["tree-test-image.avif"]*100)
+    # print(IMAGES_LIST)
+
+    print(f"Images to be loaded: {len(IMAGES_LIST)}")
+
+    # for idx, img in enumerate(images):
+    #     load_image(img, idx)
 
 
 def create_room(
@@ -429,6 +464,7 @@ def create_room(
         PAINTINGS.append(i)
 
     SCENE.add(room)
+    print(f"created {room.name}, painting number now at {len(PAINTINGS)}")
 
 
 async def clone_rooms(chunks: list[tuple[int, int]], layout: MAP, apothem: float):
@@ -436,6 +472,62 @@ async def clone_rooms(chunks: list[tuple[int, int]], layout: MAP, apothem: float
         room, rotation = get_gallery_room(x, y, layout)
         create_room((x, y), apothem, room, rotation)
         # print(f"Generated ({x}, {y})")
+
+
+# -------------------------------------- LAZY LOADING --------------------------------------
+print("LAZY LOADING")
+
+
+async def load_room(room: THREE.Group) -> None:
+    """Loads a room and/or makes it visible."""
+    paintings = room.getObjectByName("Pictures")
+    print(room.name[5:])
+    print(any(p.name.startswith(f"picture_{room.name[5:]}") for p in PICTURES.children))
+
+    if any(p.name.startswith(f"picture_{room.name[5:]}") for p in PICTURES.children):
+        # Checks whther the room has any "photoframes" in it, if yes then it has been previously loaded and we just need to set it to be visible
+
+        for p in PICTURES.children:
+            if p.name.startswith(f"picture_{room.name[5:]}"):
+                p.visible = True
+    else:
+        # This is the first time we are loading this room so we need to load its paintings too
+        for p in paintings.children:
+            if p.name.startswith("pic_"):
+                slot = int(p.name.split("_")[1])
+                if slot < len(IMAGES_LIST):
+                    load_image(slot)
+                    print(f'loaded image {slot}')
+
+
+async def unload_room(room: THREE.Group) -> None:
+    """Makes the paintings invisible"""
+    for p in PICTURES.children:
+        if p.name.startswith(f"picture_{room.name[5:]}"):
+            p.visible = False
+            print(f'{p.name} now invisible')
+
+    print(f'{room.name} is now unloaded')
+
+
+async def updated_loaded_rooms(current_room: THREE.Group, r: int = 2) -> None:
+    ''' Loads all rooms which are at some r distance from the current room '''
+    print("Loading rooms...")
+
+    get_chunk_coords = lambda room: sum(int(i) for i in room.name.split("_")[1:])
+    calc = lambda room: abs(get_chunk_coords(current_room) - get_chunk_coords(room)) <= r
+
+    for room in ROOMS:
+        if room in LOADED_ROOMS:
+            if not calc(room):
+                await unload_room(room)
+                LOADED_ROOMS.remove(room)
+        else:
+            if calc(room):
+                await load_room(room)
+                LOADED_ROOMS.append(room)
+
+    print("updated_loaded_rooms finished")
 
 
 # -------------------------------------- GALLERY LOADING --------------------------------------
@@ -514,17 +606,6 @@ async def load_gallery_blocks() -> None:
         else:
             break
 
-"""     # Ensure they are loaded
-    all_loaded = False
-    while not all_loaded:
-        all_loaded = True
-        for i in ROOM_TYPES:
-            if i not in GALLERY_BLOCKS:
-                all_loaded = False
-                await asyncio.sleep(0.02)
-                break
- """
-
 
 def get_room_apothem() -> float:
     # Get the corner room, estimate distance from center
@@ -556,6 +637,7 @@ async def load_gallery() -> None:
     )
     await clone_rooms(layout_points, layout, apothem)
     await load_images_from_listing()
+    await updated_loaded_rooms(SCENE.getObjectByName("room_0_0"))
 
 
 async def main():
@@ -570,7 +652,7 @@ async def main():
         velocity = move_character(delta)
         if velocity == THREE.Vector3.new(0, 0, 0):
             continue
-        if check_collision(velocity, delta):
+        if await check_collision(velocity, delta):
             CAMERA.position.addScaledVector(velocity, delta)
 
         RENDERER.render(SCENE, CAMERA)
