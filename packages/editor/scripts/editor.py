@@ -390,7 +390,7 @@ def start_path(event: MouseEvent) -> None:
     if event.button != 0:
         return
 
-    if ctx.moving_image:
+    if ctx.moving_image or ctx.drawing_shape:
         return
 
     ctx.drawing = True
@@ -507,7 +507,6 @@ def draw_shape(
     start x,y when the canvas was initially clicked."""
     if not ctx.drawing_shape:
         return
-    buffer_ctx.clearRect(0, 0, canvas.width, canvas.height)
     init_x, init_y = ctx.start_coords
     dx = x - init_x
     dy = y - init_y
@@ -606,7 +605,7 @@ def stop_path(_: MouseEvent) -> None:
     Args:
         event (MouseEvent): The mouse event
     """
-    if ctx.drawing and not ctx.clipping:
+    if ctx.drawing and not ctx.clipping and not ctx.drawing_shape:
         ctx.drawing = False
         save_history()
 
@@ -638,25 +637,10 @@ def drop_media(event: MouseEvent) -> None:
         )
     if ctx.drawing_shape:
         ctx.drawing_shape = False
+        ctx.drawing = False
+        ctx.drawImage(buffer, 0,0)
+        save_history()
 
-        buffer_image_data = buffer_ctx.getImageData(
-            0,
-            0,
-            canvas.width,
-            canvas.height,
-        )
-
-        def draw_shape_to_canvas(img_bitmap) -> None:
-            ctx.drawImage(
-                img_bitmap,
-                0,
-                0,
-                canvas.width,
-                canvas.height,
-            )
-            save_history()
-
-        createImageBitmap(buffer_image_data).then(draw_shape_to_canvas)
 
 
 @when("mouseenter", "#image-canvas")
@@ -679,7 +663,7 @@ def leaves_canvas(event: MouseEvent) -> None:
     Args:
         event (MouseEvent): The mouse event
     """
-    if not ctx.drawing or ctx.clipping or ctx.drawing_shape:
+    if not ctx.drawing or ctx.clipping or ctx.drawing_shape or ctx.action in ("circle", "rectangle", "triangle", "star", "python"):
         return
 
     if ctx.type == "smooth" and ctx.action != "smudge":  # "pen" or "eraser"
@@ -1167,8 +1151,7 @@ def load_image(event: Event = None) -> None:
         )
         if drawing_mode == "pixel":
             resize(event)
-    else:
-        save_history()  # Save the blank canvas
+    save_history()  # Save the blank canvas
 
 
 if document.readyState == "loading":
