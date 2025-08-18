@@ -308,6 +308,20 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         except Exception as e:  # noqa: BLE001
             ui.notify(f"An error occurred: {e}", type="negative")
 
+    def show_publish_confirmation() -> None:
+        with ui.dialog() as dialog, ui.card():
+            with ui.card_section(), ui.column():
+                ui.label("Are you sure you want to publish your creation?").style("text-align: center;")
+                ui.label("You can only upload 5 images an hour.").style("text-align: center; margin: auto;")
+                ui.space()
+                with ui.row().style("display: flex; justify-content: space-between; width: 100%;"):
+                    ui.button("Cancel", on_click=dialog.close)
+                    ui.button(
+                        "Publish",
+                        on_click=lambda: (dialog.close(), publish()),
+                    )
+        dialog.open()
+
     async def login() -> None:
         """Fetch the API and login."""
         ui.notify("Logging in...")
@@ -376,10 +390,6 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 timeout=60,
             )
 
-            # if not response.ok:
-            #     ui.notify("Failed to check status!", type="negative")
-            #     return
-
             if response["logged_in"]:
                 username.set_text(response["username"])
                 register_button.move(hidden_buttons)
@@ -394,7 +404,6 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
 
                 publish_button.move(hidden_buttons)
                 logout_button.move(hidden_buttons)
-                # ui.notify("You were logged out. Please login again.")
 
         except Exception as e:
             ui.notify(f"An error occurred: {e}", type="negative")
@@ -439,15 +448,21 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         # Page controls
         with ui.column().style("flex-grow: 1; flex-basis: 0;"):
             username = ui.label("")
+
             ui.separator().classes("w-full")
+
             with ui.row():
                 dark = ui.dark_mode()
                 ui.switch("Dark mode").bind_value(dark)
+
                 ui.button(icon="help", on_click=lambda: show_help_menu()).props(
                     "class='keyboard-shortcuts' shortcut_data='btn,?'",
                 )
+
             ui.button("Clear Canvas", on_click=reset_confirmation).props("color='red'")
+
             ui.button("Download").props("id='download-button'")
+
             file_uploader = (
                 ui.upload(
                     label="Upload file",
@@ -458,6 +473,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 .props("accept='image/*' id='file-input'")
                 .style("width: 100%;")
             )
+
             type_toggle = ui.toggle(
                 {"smooth": "✍️", "pixel": "👾"},
                 value="smooth",
@@ -467,8 +483,9 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
             with ui.row().props("id='shown-buttons'") as shown_buttons:
                 register_button = ui.button("Register", on_click=show_registration_menu)
                 login_button = ui.button("Login", on_click=login)
+
             with ui.row().props("id='hidden-buttons'").style("display: none") as hidden_buttons:
-                publish_button = ui.button("Publish", on_click=publish)
+                publish_button = ui.button("Publish", on_click=show_publish_confirmation)
                 logout_button = ui.button("Logout", on_click=logout)
 
         with ui.element("div").style("position: relative;"):
@@ -482,8 +499,8 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         # Canvas controls
         with ui.column().style("flex-grow: 1; flex-basis: 0;"):
             with ui.row():
-                ui.button("Undo").props("id='undo-button' class='keyboard-shortcuts' shortcut_data='btn,u'")
-                ui.button("Redo").props("id='redo-button' class='keyboard-shortcuts' shortcut_data='btn,r'")
+                ui.button("Undo").props("id='undo-button' class='keyboard-shortcuts'")
+                ui.button("Redo").props("id='redo-button' class='keyboard-shortcuts'")
 
             action_toggle = (
                 ui.toggle(
@@ -496,7 +513,9 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                 )
                 .style("flex-wrap: wrap;")
             )
+
             ui.separator().classes("w-full")
+
             with ui.row():
                 colour_values = []
                 for colour in ["R", "G", "B"]:
@@ -504,8 +523,11 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                         ui.label(colour)
                         colour_label = ui.label("00")
                         colour_values.append(colour_label)
-            ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,z'")
+
+            ui.button("Spin", on_click=spin).props("class='keyboard-shortcuts' shortcut_data='btn,space'")
+
             ui.separator().classes("w-full")
+
             width_input = ui.number(label="Line Width", min=1, max=100, step=1)
             width_slider = ui.slider(
                 min=1,
@@ -517,14 +539,18 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                     """),
             ).classes("width-input")
             width_input.bind_value(width_slider)
+
             ui.separator().classes("w-full")
+
             text_input = ui.input(
                 label="Text",
                 placeholder="Start typing",
             ).props("id='text-input'")
+
             with ui.row():
                 bold_checkbox = ui.checkbox("Bold").props("id='bold-text'")
                 italics_checkbox = ui.checkbox("Italics").props("id='italics-text'")
+
             with ui.row():
                 font_family = ui.select(
                     [
@@ -540,6 +566,7 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
                     ],
                     value="Arial",
                 ).props("id='text-font-family'")
+
                 add_text_button = ui.button(
                     "Add to canvas",
                     on_click=lambda: (
