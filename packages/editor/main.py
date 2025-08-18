@@ -305,7 +305,19 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         try:
             await ui.run_javascript(
                 """
-                window.location.href = "https://cj12.matiiss.com/api/login";
+                const redirectUrl = "https://cj12.matiiss.com/api/login";
+
+                if (window.top === window.self) {
+                    // not inside an iframe
+                    window.location.href = redirectUrl;
+                } else {
+                    // inside an iframe
+                    window.parent.postMessage(
+                        { action: "redirect", url: redirectUrl },
+                        "https://heavenly-hostas-hosting.github.io/HHH"
+                    );
+                }
+
                 sessionStorage.setItem("cj12-hhh-logged-in", "true");
                 """,
                 timeout=60,
@@ -328,7 +340,19 @@ async def index(client: Client) -> None:  # noqa: C901, PLR0915 All of the below
         try:
             await ui.run_javascript(
                 """
-                window.location.href = "https://cj12.matiiss.com/api/logout";
+                const redirectUrl = "https://cj12.matiiss.com/api/logout";
+
+                if (window.top === window.self) {
+                    // not inside an iframe
+                    window.location.href = redirectUrl;
+                } else {
+                    // inside an iframe
+                    window.parent.postMessage(
+                        { action: "redirect", url: redirectUrl },
+                        "https://heavenly-hostas-hosting.github.io/HHH"
+                    );
+                }
+
                 sessionStorage.setItem("cj12-hhh-logged-in", "false");
                 """,
                 timeout=60,
