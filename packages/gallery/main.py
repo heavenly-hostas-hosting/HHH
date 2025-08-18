@@ -185,7 +185,7 @@ document.addEventListener("keydown", create_proxy(toggle_run))
 
 
 # Main move function
-def move_character(delta_time: float) -> THREE.Vector3:
+def move_character(delta_time: float) -> THREE.Vector3:  # noqa: C901
     if not CAN_MOVE:
         return THREE.Vector3.new(0, 0, 0)
     pressed_keys = {k for k, v in KEY_MAPPINGS.items() if any(KEY_STATES[i] for i in v)}

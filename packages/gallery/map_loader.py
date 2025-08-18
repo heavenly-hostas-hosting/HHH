@@ -59,7 +59,7 @@ class ROOM_TYPES(Enum):
     _4 = "4"
 
 
-def get_gallery_room(
+def get_gallery_room(  # noqa: C901
     x: int,
     y: int,
     layout: MAP,
