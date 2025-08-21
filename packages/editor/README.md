@@ -50,4 +50,3 @@ to the gallery.
 
 We used [`Pyscript`](https://pyscript.com/) and [`NiceGUI`](https://nicegui.io/) for this part of the project. NiceGUI was used to create the UI, and Pyscript
 was used to control the drawing features, via the [Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API).
-
