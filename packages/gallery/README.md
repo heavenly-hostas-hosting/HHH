@@ -19,6 +19,4 @@ The easiest way to test the website locally is just to run a basic HTTP server. 
 ```
 python3 -m http.server
 ```
-
 If you run the project locally you might also encounter issues with CORS permissions as the page is intended to access an external, global repository. To substitute said repo with a local placeholder for testing purposes, you can set the `USE_LOCALHOST` global to `True` on `./main.py`.
-
