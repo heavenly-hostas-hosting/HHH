@@ -215,7 +215,7 @@ In your terminal, go to your local repository and create a new branch and add th
 git switch --orphan data
 git checkout main -- .github/workflows/data.yaml
 ```
-Now, if you're on Linux, you can use the following command to replace the string `cj12.matiiss.com` with the string `${{ vars.DATA_API_HOST }}`, otherwise you can just use any text editor you'd like (preferrably one with Find & Replace functionality) to do the same
+Now, if you're on Linux, you can use the following command to replace the string `cj12.matiiss.com` with the string `${{ vars.DATA_API_HOST }}`, otherwise you can just use any text editor you'd like (preferrably one with Find & Replace functionality) to do the same for the file `.github/workflows/data.yaml`
 ```
 sed 's/cj12.matiiss.com/\$\{\{ vars.DATA_API_HOST \}\}/g' .github/workflows/data.yaml > tmp.yaml && mv tmp.yaml .github/workflows/data.yaml
 ```
