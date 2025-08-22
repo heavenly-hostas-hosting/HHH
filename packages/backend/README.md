@@ -10,8 +10,9 @@ Now, there are some prerequisites you would want to get sorted out before we beg
 - Docker Engine is installed and you have access to `docker` and `docker compose` commands from your terminal
   - You can see a detailed guide on how to install the Docker Engine here: https://docs.docker.com/engine/install/.
   - Likewise, for `docker compose` you can see the guide here: https://docs.docker.com/compose/install/.
-- A [GitHub](https://github.com/) account (and optionally a second one as well, see the [Creating a GitHub Repository](#creating-a-github-repository) section for when you'd want this)
+- Two [GitHub](https://github.com/) accounts
   - This is important because part of the stack is entirely based on GitHub and the setup requires that you create a GitHub app and host a repository on GitHub. This might be one of the first of your clues on how this project fits the "wrong tool for the job" theme.
+  - The other account is necessary if you want to test the deployment with the publishing system because you can't fork your own repositories
   - You must also set up either HTTPS or SSH authentication (I personally would suggest SSH) for GitHub: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-authentication-to-github#authenticating-with-the-command-line
 
 Alright, got that sorted out? Great, let's move on to the next steps.
@@ -364,24 +365,22 @@ Open up the `.env` file in a text editor and adjust the environment variables as
 - `CLIENT_SECRET` is the secret your generated for your GitHub App
 - `GIT_UPSTREAM_*` refers to your deployment repository, the first commit hash you can get from GitHub or git for the `data` branch by looking at the history/logs. The app installation ID you can see in the URL in your browser when you visit your installation.
 - Regarding supabase variables, they have a generator for those: https://supabase.com/docs/guides/self-hosting/docker#generate-api-keys
-- `GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI="http://localhost/api/kong/auth/v1/callback"`
-- `GITHUB_CALLBACK_REDIRECT_URI="http://localhost/api/auth"`
+- `GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI="https://localhost/api/kong/auth/v1/callback"`
+- `GITHUB_CALLBACK_REDIRECT_URI="https://localhost/api/auth"`
 - `POST_AUTH_REDIRECT_URI="https://localhost/editor"`
+- `SUPABASE_PUBLIC_URL="https://localhost/api/kong"`
 
 
 
 ### 3-2-1 Lift-off!
 First, let's connect to the internet so that the GitHub workflow can access our API for PR verification, we'll do this using https://localhost.run/ which will provide us with a free, temporary, public domain name.
 ```
-ssh -R 80:localhost:8080 localhost.run
+ssh -R 80:localhost:80 localhost.run
 ```
+Navigate over to your GitHub repository and set that domain name (just the `<random>.lhr.life` part without the protocol) as the value for the `DATA_API_HOST` repository variable as well.
 
-Now export `PUBLIC_HOST` with the value of the domain name that you got from `localhost.run` but remove the protocol or any paths (e.g., https://abcd.def.foo -> abcd.def.foo)
-
-```
-export PUBLIC_HOST=...
-```
-And navigate over to your GitHub repository and set that domain name as the value for the `DATA_API_HOST` repository variable as well.
+> [!IMPORTANT]
+> Since this domain is temporary, it will get refreshed every once in a while, so keep the variable updated whenever that happens
 
 Before we run any `docker` container, we must first create a shared network for some of the `docker compose` services to communicate with `nginx` and vice versa
 ```
@@ -393,7 +392,7 @@ It's now time to spin up the entire stack
 docker compose up -d
 ```
 
-Finally let's spin up `nginx` for traffic routing
+Finally let's spin up `nginx` for traffic routing, just copy and paste the following in your terminal, then run it
 ```bash
 NETWORK=shared-net TMP_DIR=$(mktemp -d) && \
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$TMP_DIR/key.pem" -out "$TMP_DIR/cert.pem" -subj "/CN=localhost" && \
@@ -413,12 +412,11 @@ http {
         location /static/ { proxy_pass http://cj12-editor:9010; }
     }
     server {
-        listen 443 ssl; server_name $PUBLIC_HOST;
-        ssl_certificate /etc/nginx/certs/cert.pem; ssl_certificate_key /etc/nginx/certs/key.pem;
-        location = /api/verify_pr { proxy_pass http://cj12-backend:9000; }
+        listen 80; server_name *.lhr.life;
+        location = /api/verify_pr { proxy_pass http://cj12-backend:9000/verify_pr$is_args$args; }
         location / { return 403; }
     }
 }
 EOF
-docker run --name nginx -p 80:80 -p 443:443 --network "$NETWORK" -v "$TMP_DIR/nginx.conf":/etc/nginx/nginx.conf:ro -v "$TMP_DIR":/etc/nginx/certs:ro nginx
+docker run --rm --name nginx -p 80:80 -p 443:443 --network "$NETWORK" -v "$TMP_DIR/nginx.conf":/etc/nginx/nginx.conf:ro -v "$TMP_DIR":/etc/nginx/certs:ro nginx
 ```
